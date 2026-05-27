@@ -7,7 +7,9 @@ bp = Blueprint('users', __name__)
 
 def get_db():
     """获取数据库连接"""
-    conn = sqlite3.connect('bidding.db')
+    conn = sqlite3.connect('bidding.db', timeout=30, check_same_thread=False)
+    conn.execute('PRAGMA journal_mode=WAL')
+    conn.execute('PRAGMA synchronous=NORMAL')
     conn.row_factory = sqlite3.Row
     return conn
 
@@ -29,11 +31,14 @@ def identify_user():
         user = cursor.fetchone()
         
         if user:
-            # 用户已存在
             conn.close()
             return jsonify({'userId': user['id'], 'isNew': False})
-        else:  
-            return jsonify("用户不存在"), 404
+        else:
+            cursor.execute('INSERT INTO users (fingerprint_id) VALUES (?)', (fingerprint_id,))
+            conn.commit()
+            user_id = cursor.lastrowid
+            conn.close()
+            return jsonify({'userId': user_id, 'isNew': True})
             
     except Exception as e:
         print(f'[ERROR] User identification failed: {str(e)}')

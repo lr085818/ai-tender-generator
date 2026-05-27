@@ -2,77 +2,85 @@ import logging
 from flask import Blueprint, request, jsonify, current_app
 import os
 import sqlite3
-import uuid
 import json
-import jwt
 import requests
-from datetime import datetime
 from pathlib import Path
 import mammoth
-from unidecode import unidecode
 import re
 from werkzeug.utils import secure_filename
-import codecs
 import PyPDF2
-from qwen_client import call_dashscope_api, generate_bid_section
-from md_to_word import convert_md_to_word
+from qwen_client import call_dashscope_api
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import threading
 import shutil
-from datetime import timedelta
 
-# 操作向量数据库的函数
-from file_to_chroma import file_to_chroma, query_chroma
 # 创建蓝图
 bp = Blueprint('bidding', __name__)
 
 # 临时的内存存储，用于在 upload -> pre-analysis -> chapter-analysis 之间传递小量状态
-# 结构: { bidding_id: { 'biddingId': int, 'analysisData': dict|None, 'directoryStructure': dict|None } }
 temp_analysis_store = {}
 _temp_store_lock = threading.Lock()
 
-# 环境变量
-ONLYOFFICE_JWT_SECRET = os.getenv('ONLYOFFICE_JWT_SECRET', 'fsdftertrt34768586sfhjsdhfjhhjfsuhaiubue')
-BACKEND_URL_FOR_DOCKER = os.getenv('BACKEND_URL_FOR_DOCKER', 'host.docker.internal:4000')
-APP_HOST = os.getenv('APP_HOST', 'localhost:4000')
+# 允许上传的文件类型
+ALLOWED_EXTENSIONS = {'.docx', '.doc', '.pdf'}
+
+def allowed_file(filename):
+    """检查文件扩展名是否允许"""
+    return Path(filename).suffix.lower() in ALLOWED_EXTENSIONS
 
 def get_db():
     """获取数据库连接"""
-    conn = sqlite3.connect('bidding.db')
+    conn = sqlite3.connect('bidding.db', timeout=30, check_same_thread=False)
+    conn.execute('PRAGMA journal_mode=WAL')
+    conn.execute('PRAGMA synchronous=NORMAL')
     conn.row_factory = sqlite3.Row
     return conn
 
 def read_tender_file(bidding_id):
-    """读取招标文件"""
+    """读取招标文件，失败时抛出异常"""
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute('SELECT * FROM bidding WHERE id = ?', (bidding_id,))
+    bidding = cursor.fetchone()
+    conn.close()
+    if not bidding:
+        raise Exception('招标书不存在')
+    file_path = Path(bidding['storage_path'])
+    if not file_path.exists():
+        raise Exception(f'文件不存在: {file_path}')
+
+    # 先读文件头判断真实类型（magic bytes）
+    with open(file_path, 'rb') as f:
+        header = f.read(16)
+
+    is_pdf_by_content = header.startswith(b'%PDF')
+    is_pdf_by_ext = file_path.suffix.lower() == '.pdf'
+
+    if is_pdf_by_content or is_pdf_by_ext:
+        return _read_pdf(file_path)
+
+    # 非 PDF，尝试 mammoth（DOCX/DOC）
     try:
-        conn = get_db()
-        cursor = conn.cursor()
-        cursor.execute('SELECT * FROM bidding WHERE id = ?', (bidding_id,))
-        bidding = cursor.fetchone()
-        conn.close()
-        if not bidding:
-            return jsonify({'error': '招标书不存在'}), 404
-        file_path = Path(bidding['storage_path'])
-        if file_path.suffix.lower() == '.pdf':
-            return _read_pdf(file_path)
-        else:
-            with open(bidding['storage_path'], 'rb') as f:
-                result = mammoth.extract_raw_text(f)
-            return result.value
+        with open(bidding['storage_path'], 'rb') as f:
+            result = mammoth.extract_raw_text(f)
+        return result.value
     except Exception as e:
-        return jsonify({'error': f'读取文件失败: {str(e)}'}), 500
+        error_msg = str(e).lower()
+        # 如果 mammoth 报 zip 错误，尝试用 PDF 方式兜底
+        if 'zip' in error_msg or 'file is not' in error_msg:
+            return _read_pdf(file_path)
+        raise
 
 def _read_pdf(file_path):
-    """读取PDF文件"""
+    """读取PDF文件，失败时抛出异常"""
     text = ""
-    try:
-        with open(file_path, 'rb') as file:
-            pdf_reader = PyPDF2.PdfReader(file)
-            for page in pdf_reader.pages:
-                text += page.extract_text() + "\n"
-        return text
-    except Exception as e:
-        return jsonify({'error': f'读取文件失败: {str(e)}'}), 500
+    with open(file_path, 'rb') as file:
+        pdf_reader = PyPDF2.PdfReader(file)
+        for page in pdf_reader.pages:
+            text += page.extract_text() + "\n"
+    if not text.strip():
+        raise Exception("PDF文件内容为空或无法提取文本")
+    return text
     
 def save_bid_section(content, section_name, output_dir, tender_name):
     '''保存投标文件小节'''
@@ -116,7 +124,7 @@ def merge_sections(output_dir, tender_name, sections):
 
 @bp.route('/upload', methods=['POST'])
 def upload_bidding():
-    """上传招标文件 —— 仅保存文件并写入 DB，不生成 OnlyOffice 配置"""
+    """上传招标文件"""
     if 'file' not in request.files:
         return jsonify({'error': 'No file uploaded.'}), 400
 
@@ -124,11 +132,16 @@ def upload_bidding():
     if file.filename == '':
         return jsonify({'error': 'No file selected.'}), 400
 
+    # 文件类型校验
+    if not allowed_file(file.filename):
+        return jsonify({'error': '不支持的文件类型，仅允许 .docx、.doc、.pdf'}), 400
+
     user_id = request.form.get('userId')
     if not user_id:
         return jsonify({'error': 'User ID is required for upload.'}), 400
 
     try:
+        import uuid
         original_filename = file.filename
         safe_filename = secure_filename(original_filename)
         unique_filename = f"{uuid.uuid4()}-{safe_filename}"
@@ -137,13 +150,12 @@ def upload_bidding():
         # 保存文件到 uploads 目录
         file.save(file_path)
 
-        # 保持现有的向量化流程（同步或可改为异步）
-        try:
-            file_to_chroma(file_path)
-        except Exception:
-            logging.exception("file_to_chroma failed for %s", file_path)
+        # 校验文件大小（防止空文件）
+        if os.path.getsize(file_path) == 0:
+            os.remove(file_path)
+            return jsonify({'error': '上传的文件为空'}), 400
 
-        # 生成 document_key 并写入 DB
+        # 写入 DB
         document_key = str(uuid.uuid4())
         conn = get_db()
         cursor = conn.cursor()
@@ -177,57 +189,6 @@ def upload_bidding():
         logging.exception("upload_bidding failed")
         return jsonify({'error': f'Server error during file upload: {str(e)}'}), 500
     
-@bp.route('/save-callback', methods=['POST'])
-def save_callback():
-    """OnlyOffice 保存回调"""
-    try:
-        body = request.get_json(force=True)
-        logging.info(f'[INFO] Save callback received: {json.dumps(body, indent=2, ensure_ascii=False)}')
-
-        # OnlyOffice status 2 = readyForSave, 6 = mustSave
-        if body.get('status') in [2, 6]:
-            download_url = body.get('url')
-            document_key = body.get('key')
-
-            if not download_url:
-                logging.warning(f'No download URL provided for key {document_key}')
-                return jsonify({'error': 0})
-
-            conn = get_db()
-            try:
-                cursor = conn.cursor()
-                cursor.execute('SELECT * FROM bidding WHERE document_key = ?', (document_key,))
-                bidding = cursor.fetchone()
-
-                if not bidding:
-                    logging.error(f'Bidding with key {document_key} not found')
-                    return jsonify({'error': 0})
-
-                target_path = bidding['bid_document'] or bidding['storage_path']
-                Path(target_path).parent.mkdir(parents=True, exist_ok=True)
-
-                resp = requests.get(download_url, stream=True, timeout=60)
-                resp.raise_for_status()
-                with open(target_path, 'wb') as f:
-                    for chunk in resp.iter_content(chunk_size=8192):
-                        if chunk:
-                            f.write(chunk)
-
-                # 更新 DB 状态为 Edited，并保存 bid_document 路径
-                cursor.execute('UPDATE bidding SET status=?, bid_document=? WHERE id=?',
-                               ('Edited', target_path, bidding['id']))
-                conn.commit()
-                logging.info(f'Document {bidding["original_filename"]} updated successfully at {target_path}')
-            finally:
-                conn.close()
-
-        # OnlyOffice 要求返回 { "error": 0 }
-        return jsonify({'error': 0})
-
-    except Exception as e:
-        logging.exception('save-callback failed')
-        return jsonify({'error': 0})
-    
 @bp.route('/pre-analysis_bid', methods=['POST'])
 def pre_analysis_bid():
     """预处理招标文件"""
@@ -244,7 +205,29 @@ def pre_analysis_bid():
         if not bidding:
             return jsonify({'error': '招标书不存在'}), 404
         # 读取文件内容
-        bid_content = read_tender_file(bidding_id)
+        try:
+            bid_content = read_tender_file(bidding_id)
+        except FileNotFoundError as fe:
+            logging.error(f"文件不存在: {fe}")
+            return jsonify({'error': f'招标文件已丢失，请重新上传：{fe}'}), 404
+        except Exception as fe:
+            # read_tender_file 用 Exception 抛了"文件不存在"
+            msg = str(fe)
+            if '文件不存在' in msg or '不存在' in msg:
+                logging.error(f"招标文件丢失: {msg}")
+                return jsonify({'error': f'招标文件已丢失，请重新上传该项目'}), 404
+            logging.exception('读取招标文件失败')
+            return jsonify({'error': f'读取招标文件失败: {msg}'}), 500
+
+        # 对过长的内容进行截断
+        max_content_length = 20000
+        if len(bid_content) > max_content_length:
+            head_size = 15000
+            tail_size = 5000
+            bid_content = bid_content[:head_size] + \
+                "\n\n...[中间内容省略]...\n\n" + \
+                bid_content[-tail_size:]
+            logging.info(f"预分析：招标文件内容过长，已截断为{len(bid_content)}字符")
 
         pre_analysis_prompt =  f'''
         你是一个资深的招投标文件分析师，请根据以下招标书内容，提炼出完整信息，并严格按照下面的JSON格式返回你的分析结果，不要有任何多余的解释，只返回以下json内容。
@@ -263,11 +246,10 @@ def pre_analysis_bid():
         '''
         response = call_dashscope_api([
             {'role': 'user', 'content': pre_analysis_prompt}
-        ])
+        ], timeout=300)
         # print(f'[INFO] Pre-analysis response: {response}')
-        # 兼容不同返回结构
         try:
-            http_data = response['output']['choices'][0]['message']['content']
+            http_data = response['choices'][0]['message']['content']
         except (KeyError, IndexError, TypeError):
             return jsonify({'error': 'API响应格式错误'}), 500
 
@@ -277,10 +259,10 @@ def pre_analysis_bid():
 
         try:
             if json_match:
-                analysis_result = json.loads(json_match.group(1))
+                analysis_result = json.loads(json_match.group(1), strict=False)
             else:
                 clean_json = clean_json.replace('```json', '').replace('```', '').strip()
-                analysis_result = json.loads(clean_json)
+                analysis_result = json.loads(clean_json, strict=False)
             # 将 pre-analysis 的结果写入临时存储（如果存在对应的 bidding_id）
             try:
                 with _temp_store_lock:
@@ -320,7 +302,27 @@ def chapter_analysis_bid():
         if not bidding:
             return jsonify({'error': '招标书不存在'}), 404
         # 读取文件内容
-        bid_content = read_tender_file(bidding_id)
+        try:
+            bid_content = read_tender_file(bidding_id)
+        except Exception as fe:
+            msg = str(fe)
+            if '文件不存在' in msg or '不存在' in msg:
+                return jsonify({'error': '招标文件已丢失，请重新上传该项目'}), 404
+            return jsonify({'error': f'读取招标文件失败: {msg}'}), 500
+
+        # 对过长的内容进行截断，保留前20000字符（包含目录和格式要求等关键信息）
+        max_content_length = 20000
+        if len(bid_content) > max_content_length:
+            # 保留开头部分（通常包含目录和格式要求）和结尾部分
+            head_size = 15000
+            tail_size = 5000
+            bid_content_truncated = bid_content[:head_size] + \
+                "\n\n...[中间内容省略]...\n\n" + \
+                bid_content[-tail_size:]
+            logging.info(f"招标文件内容过长({len(bid_content)}字符)，已截断为{len(bid_content_truncated)}字符")
+        else:
+            bid_content_truncated = bid_content
+
         post_analysis_prompt = f'''
         你是一个资深的招投标文件结构分析师，请根据以下招标书内容，输出投标书其他响应文件的格式章节内容（除封面章节），并严格按照下面的JSON格式返回你的分析结果，不要有任何多余的解释。
         {{
@@ -329,15 +331,31 @@ def chapter_analysis_bid():
         "chapter_format":招标书中的其他响应文件格式，如果有表格内容，请用Markdown表格的形式返回。
         招标书内容如下:
         ---
-        {bid_content}
+        {bid_content_truncated}
         ---
         '''
-        response = call_dashscope_api([
-                {'role': 'user', 'content': post_analysis_prompt}
-            ])
+        
+        # 使用较长超时并支持重试
+        response = None
+        last_error = None
+        for attempt in range(2):
+            try:
+                response = call_dashscope_api([
+                    {'role': 'user', 'content': post_analysis_prompt}
+                ], timeout=300)
+                break
+            except requests.exceptions.Timeout:
+                last_error = "API请求超时"
+                logging.warning(f"章节分析第{attempt+1}次尝试超时，{'重试中...' if attempt == 0 else '放弃'}")
+            except requests.exceptions.ConnectionError as ce:
+                last_error = f"网络连接错误: {ce}"
+                logging.warning(f"章节分析第{attempt+1}次连接错误: {ce}")
+        
+        if response is None:
+            return jsonify({'error': f'章节分析失败: {last_error}，请稍后重试'}), 504
+
         try:
-             http_data = response['output']['choices'][0]['message']['content']
-             temp_analysis_store[bidding_id]['directoryStructure'] = http_data
+             http_data = response['choices'][0]['message']['content']
         except (KeyError, IndexError, TypeError):
              return jsonify({'error': 'API响应格式错误'}), 500
 
@@ -346,11 +364,28 @@ def chapter_analysis_bid():
         clean_json = re.sub(r'<think>.*?</think>', '', http_data, flags=re.DOTALL).strip()
         json_match = re.search(r'```json\n(.*?)\n```', clean_json, re.DOTALL)
 
-        if json_match:
-            analysis_result = json.loads(json_match.group(1))
-        else:
-            clean_json = clean_json.replace('```json', '').replace('```', '').strip()
-            analysis_result = json.loads(clean_json)
+        try:
+            if json_match:
+                analysis_result = json.loads(json_match.group(1), strict=False)
+            else:
+                clean_json = clean_json.replace('```json', '').replace('```', '').strip()
+                analysis_result = json.loads(clean_json, strict=False)
+        except Exception as e:
+            try:
+                import ast
+                clean_json = re.sub(r'<think>.*?</think>', '', http_data, flags=re.DOTALL).strip()
+                clean_json = clean_json.replace('```json', '').replace('```', '').strip()
+                analysis_result = ast.literal_eval(clean_json)
+            except Exception as e2:
+                print(f"[ERROR] JSON parse error: {e}, Fallback also failed: {e2}")
+                return jsonify({'error': 'AI生成的章节格式无法解析'}), 500
+            
+        # 将结构存入 temp_analysis_store
+        with _temp_store_lock:
+            if bidding_id not in temp_analysis_store:
+                temp_analysis_store[bidding_id] = {}
+            temp_analysis_store[bidding_id]['directoryStructure'] = analysis_result
+            
         return jsonify(analysis_result)
 
     except Exception as e:
@@ -362,8 +397,8 @@ def chapter_design():
     """投标文件章节设计"""
     data = request.get_json()
     bidding_id = data.get('biddingId') 
-    logging.info(f"temp_analysis_store: {temp_analysis_store}")
-    print(f"temp_analysis_store: {temp_analysis_store}")
+    logging.info(f"chapter-design called for bidding_id: {bidding_id}")
+    
     # 获取分析结果和目录结构
     analysis_data = temp_analysis_store.get(bidding_id, {}).get('analysisData')
     directory_structure = temp_analysis_store.get(bidding_id, {}).get('directoryStructure')
@@ -376,13 +411,24 @@ def chapter_design():
     bidding_summary = analysis_data.get('bidding_summary', '')
     bidding_meta = analysis_data.get('bidding_meta', '')
 
+    # 精简directory_structure，避免prompt过长
+    dir_str = json.dumps(directory_structure, ensure_ascii=False) if isinstance(directory_structure, dict) else str(directory_structure)
+    if len(dir_str) > 8000:
+        dir_str = dir_str[:8000] + "\n...[内容过长已截断]"
+    
+    # 精简其他字段
+    if len(str(bidding_meta)) > 5000:
+        bidding_meta = str(bidding_meta)[:5000] + "...[已截断]"
+    if len(str(bidding_summary)) > 3000:
+        bidding_summary = str(bidding_summary)[:3000] + "...[已截断]"
+
     # 构建提示词
     chapter_design_prompt = (
         f"你是一个资深的投标文件目录结构设计专家，请根据以下信息，整理出最终的标书章节结构：\n\n"
         f"必须包含的文件和材料：{bidding_requirements}\n"
         f"招标书内容总结：{bidding_summary}\n"
         f"招标书具体要求和评分标准：{bidding_meta}\n"
-        f"投标书章节大纲：{directory_structure}\n\n"
+        f"投标书章节大纲：{dir_str}\n\n"
         "基于以上招标文件要求和行业经验，请补充章节的子节目录，确保投标文件完整且符合要求。\n"
         "要求：\n"
         "1、输出的投标书章节结构必须遵循目录结构，并包含所有必要的子章节。\n"
@@ -408,7 +454,7 @@ def chapter_design():
     }
   ]
 }'''
-        "字段说明：\n"
+        "\n字段说明：\n"
         "title：章节标题。\n"
         "type：章节类型，normal表示文本章节，table表示表格章节。\n"
         "content：table章节需填写原本章节内容。\n"
@@ -418,15 +464,30 @@ def chapter_design():
     )
 
     try:
-        # 调用 LLM API
-        response = call_dashscope_api([
-            {'role': 'user', 'content': chapter_design_prompt}
-        ])
-        print(f'[INFO] response: {response}')
+        # 调用 LLM API，支持重试
+        response = None
+        last_error = None
+        for attempt in range(2):
+            try:
+                response = call_dashscope_api([
+                    {'role': 'user', 'content': chapter_design_prompt}
+                ], timeout=600)
+                break
+            except requests.exceptions.Timeout:
+                last_error = "API请求超时"
+                logging.warning(f"章节设计第{attempt+1}次尝试超时")
+            except requests.exceptions.ConnectionError as ce:
+                last_error = f"网络连接错误: {ce}"
+                logging.warning(f"章节设计第{attempt+1}次连接错误: {ce}")
+        
+        if response is None:
+            return jsonify({'error': f'章节设计失败: {last_error}，请稍后重试'}), 504
+
+        logging.info(f'[INFO] chapter-design response received')
 
         # 获取返回内容
         try:
-            http_data = response['output']['choices'][0]['message']['content']
+            http_data = response['choices'][0]['message']['content']
         except (KeyError, IndexError, TypeError):
             return jsonify({'error': 'API响应格式错误'}), 500
 
@@ -441,13 +502,18 @@ def chapter_design():
         json_text = json_text.rstrip(", \n")
 
         try:
-            analysis_result = json.loads(json_text)
+            analysis_result = json.loads(json_text, strict=False)
         except json.JSONDecodeError as e:
-            print("------ JSON Parse Error ------")
-            print(f"Error: {e}")
-            print("Raw text snippet:")
-            print(json_text[:2000])
-            return jsonify({'error': f'JSON解析失败: {str(e)}'}), 500
+            # 如果JSON解析失败，尝试修复常见的JSON错误
+            try:
+                import ast
+                analysis_result = ast.literal_eval(json_text)
+            except:
+                print("------ JSON Parse Error ------")
+                print(f"Error: {e}")
+                print("Raw text snippet:")
+                print(json_text[:2000])
+                return jsonify({'error': f'JSON解析失败: {str(e)}'}), 500
 
         return jsonify(analysis_result)
 
@@ -461,167 +527,84 @@ def chapter_design():
 
 @bp.route('/generate-bid-document', methods=['POST'])
 def generate_bid_document():
-    """生成完整投标书文件，并在生成 .docx 后构造 OnlyOffice editorConfig 返回"""
-    data = request.get_json()
-    bidding_id = data.get('biddingId')
-    chapter_design = data.get('chapterDesign')
-    if not bidding_id:
-        return jsonify({'error': 'Missing biddingId'}), 400
-    if not chapter_design:
-        return jsonify({'error': 'Missing chapterDesign'}), 400
+    """生成完整投标书文件（标准Word格式）"""
+    from generate_route import generate_bid_document_new
+    return generate_bid_document_new(get_db, read_tender_file, temp_analysis_store)
 
-    # 如果前端传的是字符串形式的 JSON，尝试解析
-    if isinstance(chapter_design, str):
-        try:
-            chapter_design = json.loads(chapter_design)
-        except Exception as e:
-            logging.error(f"chapterDesign JSON 解析失败: {e}")
-            return jsonify({'error': 'chapterDesign JSON 解析失败'}), 400
 
+@bp.route('/document-preview/<int:bidding_id>', methods=['GET'])
+def document_preview(bidding_id):
+    """获取生成的投标文件内容，用于前端只读预览"""
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute('SELECT * FROM bidding WHERE id=?', (bidding_id,))
+    bidding = cur.fetchone()
+    conn.close()
+
+    if not bidding:
+        return jsonify({'error': '项目不存在'}), 404
+
+    # 优先读取生成的Word文件内容
+    bid_document_path = ''
     try:
-        # 读取 bidding 记录
-        conn = get_db()
-        cursor = conn.cursor()
-        cursor.execute('SELECT * FROM bidding WHERE id = ?', (bidding_id,))
-        bidding = cursor.fetchone()
-        conn.close()
-        if not bidding:
-            return jsonify({'error': '招标书不存在'}), 404
-
-        tender_name = Path(bidding['original_filename']).stem
-        # 如果已经生成 markdown，直接转换
-        markdown_file = Path("outputs") / tender_name / f"{tender_name}_完整投标文件.md"
-        if markdown_file.exists():
-            logging.info("已存在生成的 Markdown 文件，直接调用转换函数。")
-            try:
-                generated_docx_path = convert_md_to_word(markdown_file)
-            except Exception as e:
-                logging.exception("convert_md_to_word failed for existing md")
-                return jsonify({'error': '已存在 Markdown，但转换为 Word 失败'}), 500
-
-            if not generated_docx_path or not Path(generated_docx_path).exists():
-                logging.error(f"convert_md_to_word 未返回有效路径或文件不存在: {generated_docx_path}")
-                return jsonify({'error': '已生成 Markdown，但 docx 未找到'}), 500
-
-            generated_docx_path = Path(generated_docx_path)
-
-            # 继续到下面的步骤（复制到 GENERATED_FOLDER、构造 editorConfig 等）
-        else:
-            # 按原逻辑生成章节内容并合并为 markdown
-            # 用你原来的生成逻辑（这里为最小改动保留）
-            saved_section_names = []
-            for chapter in chapter_design:
-                c_type = (chapter.get('type') or "normal").strip().lower()
-                c_title = chapter.get('title', "")
-                c_content = chapter.get('content', "")
-                if c_type == 'table':
-                    if c_content:
-                        save_bid_section(c_content, c_title, "outputs", tender_name)
-                        saved_section_names.append(c_title)
-                elif c_type == 'normal':
-                    sections = chapter.get('sections', [])
-                    tasks = []
-                    with ThreadPoolExecutor(max_workers=8) as executor:
-                        for section in sections:
-                            subsections = section.get('subsections', [])
-                            for subsection in subsections:
-                                sub_title = subsection.get('title', '')
-                                sub_content = subsection.get('describe', '')
-                                vector_context = query_chroma(sub_content)
-                                if not sub_title or not sub_content:
-                                    logging.warning(f"跳过无效的 subsection：{sub_title}")
-                                    continue
-                                future = executor.submit(generate_bid_section, sub_title, sub_content, vector_context)
-                                tasks.append((future, sub_title))
-                        for future, sub_title in tasks:
-                            try:
-                                generated_content = future.result()
-                                save_bid_section(generated_content, sub_title, "outputs", tender_name)
-                                saved_section_names.append(sub_title)
-                            except Exception:
-                                logging.exception("generate_bid_section failed for %s", sub_title)
+        bid_document_path = bidding['bid_document'] if bidding['bid_document'] else ''
+    except (KeyError, IndexError):
+        pass
+    
+    if bid_document_path and Path(bid_document_path).exists() and bid_document_path.endswith('.docx'):
+        try:
+            from docx import Document as DocxDocument
+            doc = DocxDocument(bid_document_path)
+            # 提取所有段落文本，保留结构
+            lines = []
+            for para in doc.paragraphs:
+                text = para.text.strip()
+                if text:
+                    lines.append(text)
                 else:
-                    logging.warning(f"未知的 chapter type '{c_type}'，跳过：{c_title}")
-
-            merged_md_path = merge_sections("outputs", tender_name, saved_section_names)
-            if not merged_md_path:
-                logging.error("合并章节生成 Markdown 失败。")
-                return jsonify({'error': '合并章节失败'}), 500
-
-            try:
-                generated_docx_path = convert_md_to_word(merged_md_path)
-            except Exception:
-                logging.exception("convert_md_to_word failed")
-                return jsonify({'error': 'Markdown 转 Word 失败'}), 500
-
-            if not generated_docx_path or not Path(generated_docx_path).exists():
-                logging.error(f"convert_md_to_word 未返回有效路径或文件不存在: {generated_docx_path}")
-                return jsonify({'error': '生成的 docx 文件不存在'}), 500
-
-            generated_docx_path = Path(generated_docx_path)
-
-        # === 下面开始：把生成的 docx 放到 GENERATED_FOLDER 并构造 OnlyOffice editorConfig（内联实现） ===
-        
-
-        gen_folder = Path(current_app.config.get('GENERATED_FOLDER', 'outputs'))
-        gen_folder.mkdir(parents=True, exist_ok=True)
-
-        safe_name = secure_filename(generated_docx_path.name)
-        target = gen_folder / safe_name
-        if generated_docx_path.resolve() != target.resolve():
-            shutil.copy2(str(generated_docx_path), str(target))
-
-        # 构造对外可访问的 base URL（优先 APP_PUBLIC_BASE_URL；其次 BACKEND_URL_FOR_DOCKER / APP_HOST / request.url_root）
-        # backend_url = BACKEND_URL_FOR_DOCKER
-        backend_url = "host.docker.internal:3012"
-        relative_path = str(generated_docx_path).replace("\\", "/")
-        file_url = f"http://{backend_url}/api/{relative_path}"
-        # file_url = f"http://{backend_url}/api/{generated_docx_path}"
-        callback_url = f"http://{backend_url}/api/bidding/save-callback"
-
-        # document key（用于 OnlyOffice 缓存），使用 DB 中已有的或者新生成
-        doc_key = bidding[4]
-
-        payload = {
-            'document': {
-                'fileType': 'docx',
-                'key': doc_key,
+                    lines.append('')
+            content = '\n'.join(lines)
+            # 构造下载URL
+            safe_name = Path(bid_document_path).name
+            port = os.environ.get('PORT', '3012')
+            download_url = f"http://localhost:{port}/api/outputs/{safe_name}"
+            return jsonify({
+                'content': content,
                 'title': bidding['original_filename'],
-                'url': file_url,
-            },
-            'documentType': 'word',
-            'editorConfig': {
-                'callbackUrl': callback_url,
-                'mode': 'edit',
-                'user': {
-                    'id': f"user-{bidding['user_id']}",
-                    'name': 'Reviewer'
-                },
-                'customization': {'forcesave': True}
-            }
-        }
+                'fileUrl': download_url,
+                'generatedAt': None
+            })
+        except Exception as e:
+            logging.exception(f"读取Word文档失败: {e}")
 
-        # 生成JWT令牌
-        token = jwt.encode(payload, ONLYOFFICE_JWT_SECRET, algorithm='HS256')
-        editor_config_with_token = {**payload, 'token': token}
-        
+    # 回退：尝试读取Markdown文件
+    tender_name = Path(bidding['original_filename']).stem
+    markdown_file = Path("outputs") / tender_name / f"{tender_name}_完整投标文件.md"
+    if markdown_file.exists():
+        try:
+            content = markdown_file.read_text(encoding='utf-8')
+            return jsonify({
+                'content': content,
+                'title': bidding['original_filename'],
+                'generatedAt': None
+            })
+        except Exception as e:
+            logging.exception(f"读取Markdown失败: {e}")
 
-        # 更新 DB：记录生成的 docx 路径与 document_key、状态
-        conn = get_db()
-        cur = conn.cursor()
-        cur.execute('UPDATE bidding SET bid_document=?, document_key=?, status=? WHERE id=?',
-                    (str(target), doc_key, 'Generated', bidding['id']))
-        conn.commit()
-        conn.close()
+    # 再回退：尝试在outputs目录找响应文件
+    response_file = Path("outputs") / f"{tender_name}_响应文件.docx"
+    if response_file.exists():
+        try:
+            from docx import Document as DocxDocument
+            doc = DocxDocument(str(response_file))
+            lines = [para.text for para in doc.paragraphs]
+            content = '\n'.join(lines)
+            return jsonify({
+                'content': content,
+                'title': bidding['original_filename'],
+                'generatedAt': None
+            })
+        except Exception as e:
+            logging.exception(f"读取响应文件失败: {e}")
 
-        # 返回 editorConfig 给前端，前端用此配置初始化 OnlyOffice
-        return jsonify({
-            'message': '投标文件已生成',
-            'markdown': str(markdown_file if markdown_file.exists() else merged_md_path),
-            'editorConfig': editor_config_with_token,
-            'fileUrl': file_url
-        }), 201
-
-    except Exception as e:
-        logging.exception(f"生成投标书过程出错: {e}")
-        return jsonify({'error': f'生成投标书失败: {str(e)}'}), 500
+    return jsonify({'error': '文档尚未生成'}), 404

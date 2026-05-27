@@ -1,58 +1,35 @@
-from flask import Blueprint, request, jsonify, current_app
 import os
-import sqlite3
 import requests
-from datetime import datetime
-from unidecode import unidecode
-from werkzeug.utils import secure_filename
 import logging
 
-# 通义千问API配置
-DASHSCOPE_API_KEY = os.getenv('DASHSCOPE_API_KEY')
-DASHSCOPE_MODEL = os.getenv('DASHSCOPE_MODEL', 'qwen-turbo-latest')
-AI_PROVIDER = os.getenv('AI_PROVIDER', 'dashscope')
+DEEPSEEK_API_KEY = os.getenv('DEEPSEEK_API_KEY', '')
+DEEPSEEK_BASE_URL = os.getenv('DEEPSEEK_BASE_URL', 'https://api.deepseek.com')
+DEEPSEEK_CHAT_MODEL = os.getenv('DEEPSEEK_CHAT_MODEL', 'deepseek-v4-flash')
 
 
-def call_dashscope_api(messages,model= None):
-    if not DASHSCOPE_API_KEY:
-        raise Exception("DASHSCOPE_API_KEY is not set")
-    url = 'https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation'
+def call_llm_api(messages, model=None, timeout=120):
+    """调用 DeepSeek Chat API"""
+    api_key = DEEPSEEK_API_KEY
+    if not api_key:
+        raise Exception("DEEPSEEK_API_KEY is not set")
+
+    url = f'{DEEPSEEK_BASE_URL}/chat/completions'
     headers = {
-        'Authorization': f'Bearer {DASHSCOPE_API_KEY}',
+        'Authorization': f'Bearer {api_key}',
         'Content-Type': 'application/json'
     }
-
     data = {
-        'model': model or DASHSCOPE_MODEL,
-        'input': {
-            'messages': messages
-        },
-        'parameters': {
-            'result_format': 'json_object'
-        }
+        'model': model or DEEPSEEK_CHAT_MODEL,
+        'messages': messages,
     }
-    
-    response = requests.post(url, headers=headers, json=data)
+    logging.info(f"[LLM] DeepSeek {data['model']}，消息长度: {sum(len(m.get('content','')) for m in messages)} 字符")
+    response = requests.post(url, headers=headers, json=data, timeout=timeout)
     if response.status_code != 200:
-        error_message = f"Dashscope API Error: Status Code: {response.status_code}, Response Body: {response.text}"
+        error_message = f"DeepSeek API Error: Status Code: {response.status_code}, Response Body: {response.text}"
         logging.error(error_message)
         print(error_message)
     response.raise_for_status()
     return response.json()
 
-def generate_bid_section(section_title, section_content, tender_content):
-    """按小节生成招标文件内容"""
-    prompt = f'''
-    你是一个专业的投标书撰写专家，擅长根据行业经验和小节描述生成高质量的投标文件内容，请直接输出正文内容。
-    请根据以下小节标题、小节描述并参考招标书相关内容，生成投标书某一小节的完整内容。如果小节需要表格描述，请用Markdown格式生成表格。
-    需要填写的表格内容请参考招标书原文中进行填写。
-    仅输出小节正文内容，禁止包含任何自然语言解释或额外文。字数要求1000-1500字。
-    小节标题: {section_title}
-    小节描述: {section_content}
-    招标书相关内容: {tender_content}
-'''
-    response = call_dashscope_api([
-                {'role': 'user','content': prompt}
-            ])
-    content = response['output']['choices'][0]['message']['content']
-    return content
+
+call_dashscope_api = call_llm_api

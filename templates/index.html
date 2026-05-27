@@ -1,0 +1,2675 @@
+<!DOCTYPE html><!--  -->
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI智能招投标文档生成系统</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/element-plus@2.9.1/dist/index.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@element-plus/icons-vue@2.3.1/dist/index.css">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+:root {
+  /* 明亮清爽配色方案 */
+  --bg-primary: #f8fafc;
+  --bg-secondary: #f1f5f9;
+  --bg-tertiary: #e2e8f0;
+  --bg-card: #ffffff;
+  --bg-card-hover: #f8fafc;
+  --bg-input: #ffffff;
+  
+  --border-color: #e2e8f0;
+  --border-color-light: #cbd5e1;
+  
+  --text-primary: #1e293b;
+  --text-secondary: #475569;
+  --text-muted: #64748b;
+  --text-disabled: #94a3b8;
+  
+  --accent-primary: #3b82f6;
+  --accent-primary-light: #60a5fa;
+  --accent-primary-glow: rgba(59, 130, 246, 0.15);
+  
+  --accent-secondary: #10b981;
+  --accent-secondary-light: #34d399;
+  --accent-secondary-glow: rgba(16, 185, 129, 0.15);
+  
+  --success: #10b981;
+  --success-light: #34d399;
+  --warning: #f59e0b;
+  --warning-light: #fbbf24;
+  --danger: #ef4444;
+  --danger-light: #f87171;
+  
+  --gradient-primary: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  --gradient-secondary: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  --gradient-success: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  --gradient-dark: linear-gradient(180deg, #f1f5f9 0%, #f8fafc 100%);
+  
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  --shadow-glow-primary: 0 0 15px rgba(59, 130, 246, 0.2);
+  --shadow-glow-secondary: 0 0 15px rgba(16, 185, 129, 0.2);
+  
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  
+  --transition-fast: 0.15s ease;
+  --transition-normal: 0.25s ease;
+  --transition-slow: 0.4s ease;
+}
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  min-height: 100vh;
+  overflow-x: hidden;
+  line-height: 1.6;
+}
+
+/* ===== 滚动条样式 ===== */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-secondary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--border-color-light);
+}
+
+/* ===== Element Plus 主题覆盖 ===== */
+.el-button {
+  border-radius: var(--radius-md) !important;
+  font-weight: 600 !important;
+  transition: all var(--transition-normal) !important;
+  border: none !important;
+}
+
+.el-button--primary {
+  background: var(--gradient-primary) !important;
+  box-shadow: 0 4px 14px rgba(0, 212, 255, 0.3) !important;
+}
+
+.el-button--primary:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 6px 20px rgba(0, 212, 255, 0.4) !important;
+}
+
+.el-button--success {
+  background: var(--gradient-success) !important;
+  box-shadow: 0 4px 14px rgba(0, 200, 83, 0.3) !important;
+}
+
+.el-button--warning {
+  background: linear-gradient(135deg, #ffc107, #ff9800) !important;
+}
+
+.el-button--danger {
+  background: linear-gradient(135deg, #ff1744, #ff4569) !important;
+}
+
+.el-input__wrapper {
+  background: var(--bg-input) !important;
+  border: 1px solid var(--border-color) !important;
+  border-radius: var(--radius-md) !important;
+  box-shadow: none !important;
+  transition: all var(--transition-normal) !important;
+}
+
+.el-input__wrapper:hover {
+  border-color: var(--accent-primary) !important;
+}
+
+.el-input__wrapper.is-focus {
+  border-color: var(--accent-primary) !important;
+  box-shadow: 0 0 0 3px var(--accent-primary-glow) !important;
+}
+
+.el-input__inner {
+  color: var(--text-primary) !important;
+}
+
+.el-card {
+  background: var(--bg-card) !important;
+  border: 1px solid var(--border-color) !important;
+  border-radius: var(--radius-lg) !important;
+  transition: all var(--transition-normal) !important;
+}
+
+.el-card:hover {
+  border-color: var(--accent-primary) !important;
+  box-shadow: var(--shadow-glow-primary) !important;
+  transform: translateY(-2px);
+}
+
+.el-card__header {
+  border-bottom: 1px solid var(--border-color) !important;
+  padding: 20px 24px !important;
+}
+
+.el-table {
+  background: transparent !important;
+  --el-table-border-color: var(--border-color) !important;
+  --el-table-header-bg-color: var(--bg-secondary) !important;
+  --el-table-row-hover-bg-color: var(--accent-primary-glow) !important;
+  --el-table-bg-color: transparent !important;
+  --el-table-tr-bg-color: transparent !important;
+}
+
+.el-table th.el-table__cell {
+  background: var(--bg-secondary) !important;
+  color: var(--text-secondary) !important;
+  font-weight: 600 !important;
+  border-bottom: 1px solid var(--border-color) !important;
+}
+
+.el-table td.el-table__cell {
+  border-bottom: 1px solid var(--border-color) !important;
+  color: var(--text-primary) !important;
+}
+
+.el-tag {
+  border-radius: var(--radius-sm) !important;
+  font-weight: 500 !important;
+}
+
+.el-tag--success {
+  background: rgba(0, 200, 83, 0.15) !important;
+  border-color: rgba(0, 200, 83, 0.3) !important;
+  color: var(--success) !important;
+}
+
+.el-tag--warning {
+  background: rgba(255, 193, 7, 0.15) !important;
+  border-color: rgba(255, 193, 7, 0.3) !important;
+  color: var(--warning) !important;
+}
+
+.el-tag--info {
+  background: rgba(0, 212, 255, 0.15) !important;
+  border-color: rgba(0, 212, 255, 0.3) !important;
+  color: var(--accent-primary) !important;
+}
+
+.el-menu {
+  background: transparent !important;
+  border-right: none !important;
+}
+
+.el-menu-item {
+  color: var(--text-secondary) !important;
+  border-radius: var(--radius-md) !important;
+  margin: 4px 12px !important;
+  transition: all var(--transition-normal) !important;
+}
+
+.el-menu-item:hover {
+  background: var(--accent-primary-glow) !important;
+  color: var(--accent-primary) !important;
+}
+
+.el-menu-item.is-active {
+  background: var(--accent-primary-glow) !important;
+  color: var(--accent-primary) !important;
+  box-shadow: inset 3px 0 0 var(--accent-primary) !important;
+}
+
+.el-upload-dragger {
+  background: var(--bg-secondary) !important;
+  border: 2px dashed var(--border-color) !important;
+  border-radius: var(--radius-lg) !important;
+  transition: all var(--transition-normal) !important;
+}
+
+.el-upload-dragger:hover {
+  border-color: var(--accent-primary) !important;
+  background: var(--accent-primary-glow) !important;
+}
+
+.el-progress-bar__outer {
+  background: var(--bg-secondary) !important;
+}
+
+.el-progress-bar__inner {
+  background: var(--gradient-primary) !important;
+  border-radius: var(--radius-sm) !important;
+}
+
+.el-dialog {
+  background: var(--bg-card) !important;
+  border: 1px solid var(--border-color) !important;
+  border-radius: var(--radius-xl) !important;
+}
+
+.el-dialog__header {
+  border-bottom: 1px solid var(--border-color) !important;
+  padding: 24px !important;
+}
+
+.el-dialog__title {
+  color: var(--text-primary) !important;
+  font-weight: 700 !important;
+  font-size: 18px !important;
+}
+
+.el-step__title {
+  color: var(--text-secondary) !important;
+  font-weight: 600 !important;
+}
+
+.el-step__title.is-process {
+  color: var(--accent-primary) !important;
+}
+
+.el-step__title.is-finish {
+  color: var(--success) !important;
+}
+
+.el-step__icon.is-process {
+  background: var(--gradient-primary) !important;
+  border-color: var(--accent-primary) !important;
+}
+
+.el-step__icon.is-finish {
+  background: var(--gradient-success) !important;
+  border-color: var(--success) !important;
+}
+
+/* ===== 登录页面 ===== */
+.login-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-primary);
+  position: relative;
+  overflow: hidden;
+}
+
+.login-page::before {
+  content: '';
+  position: absolute;
+  width: 600px;
+  height: 600px;
+  background: radial-gradient(circle, var(--accent-primary-glow) 0%, transparent 70%);
+  top: -200px;
+  right: -200px;
+  animation: float 8s ease-in-out infinite;
+}
+
+.login-page::after {
+  content: '';
+  position: absolute;
+  width: 400px;
+  height: 400px;
+  background: radial-gradient(circle, var(--accent-secondary-glow) 0%, transparent 70%);
+  bottom: -100px;
+  left: -100px;
+  animation: float 10s ease-in-out infinite reverse;
+}
+
+@keyframes float {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(20px, -20px) scale(1.05); }
+}
+
+.login-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-xl);
+  padding: 48px 40px;
+  width: 440px;
+  max-width: 90vw;
+  position: relative;
+  z-index: 1;
+  box-shadow: var(--shadow-lg);
+  backdrop-filter: blur(10px);
+}
+
+.login-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--gradient-primary);
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+}
+
+.login-logo {
+  width: 72px;
+  height: 72px;
+  background: var(--gradient-primary);
+  border-radius: var(--radius-lg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 28px;
+  font-size: 32px;
+  font-weight: 900;
+  color: #fff;
+  box-shadow: var(--shadow-glow-primary);
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { box-shadow: 0 0 20px rgba(0, 212, 255, 0.4); }
+  50% { box-shadow: 0 0 40px rgba(0, 212, 255, 0.6); }
+}
+
+.login-card h1 {
+  font-size: 26px;
+  font-weight: 800;
+  margin-bottom: 8px;
+  text-align: center;
+  background: var(--gradient-primary);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.login-card p {
+  color: var(--text-muted);
+  text-align: center;
+  margin-bottom: 36px;
+  font-size: 14px;
+}
+
+.login-features {
+  display: flex;
+  justify-content: center;
+  gap: 24px;
+  margin-bottom: 32px;
+}
+
+.login-feature {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.login-feature .icon {
+  width: 16px;
+  height: 16px;
+  color: var(--accent-primary);
+}
+
+/* ===== 主布局 ===== */
+.app-layout {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 顶部导航 */
+.top-navbar {
+  height: 70px;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 32px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  backdrop-filter: blur(20px);
+}
+
+.navbar-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.navbar-brand .logo {
+  width: 42px;
+  height: 42px;
+  background: var(--gradient-primary);
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  font-weight: 900;
+  color: #fff;
+  box-shadow: var(--shadow-glow-primary);
+}
+
+.navbar-brand .brand-text {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.navbar-brand .brand-text span {
+  display: block;
+  font-size: 11px;
+  color: var(--text-muted);
+  font-weight: 500;
+  letter-spacing: 0.5px;
+}
+
+.navbar-menu {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.nav-item {
+  padding: 10px 18px;
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition-normal);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.nav-item:hover {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+.nav-item.active {
+  background: var(--accent-primary-glow);
+  color: var(--accent-primary);
+}
+
+.navbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 16px;
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--transition-normal);
+}
+
+.user-info:hover {
+  background: var(--border-color);
+}
+
+.user-avatar {
+  width: 32px;
+  height: 32px;
+  background: var(--gradient-primary);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 600;
+  color: #fff;
+}
+
+.user-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+/* 主内容区 */
+.main-content {
+  flex: 1;
+  padding: 32px;
+  max-width: 1600px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.page-header {
+  margin-bottom: 32px;
+}
+
+.page-header h2 {
+  font-size: 28px;
+  font-weight: 700;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.page-header p {
+  color: var(--text-secondary);
+  font-size: 15px;
+}
+
+/* ===== 统计卡片 ===== */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 24px;
+  margin-bottom: 32px;
+}
+
+.stat-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+  transition: all var(--transition-normal);
+}
+
+.stat-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--gradient-primary);
+  opacity: 0;
+  transition: opacity var(--transition-normal);
+}
+
+.stat-card:hover {
+  border-color: var(--accent-primary);
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-glow-primary);
+}
+
+.stat-card:hover::before {
+  opacity: 1;
+}
+
+.stat-card.success::before {
+  background: var(--gradient-success);
+}
+
+.stat-card.success:hover {
+  box-shadow: 0 0 20px rgba(0, 200, 83, 0.3);
+}
+
+.stat-card.warning::before {
+  background: linear-gradient(135deg, #ffc107, #ff9800);
+}
+
+.stat-card.warning:hover {
+  box-shadow: 0 0 20px rgba(255, 193, 7, 0.3);
+}
+
+.stat-card.danger::before {
+  background: linear-gradient(135deg, #ff1744, #ff4569);
+}
+
+.stat-card.danger:hover {
+  box-shadow: 0 0 20px rgba(255, 23, 68, 0.3);
+}
+
+.stat-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.stat-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 26px;
+}
+
+.stat-icon.blue {
+  background: var(--accent-primary-glow);
+  color: var(--accent-primary);
+}
+
+.stat-icon.green {
+  background: rgba(0, 200, 83, 0.15);
+  color: var(--success);
+}
+
+.stat-icon.orange {
+  background: var(--accent-secondary-glow);
+  color: var(--accent-secondary);
+}
+
+.stat-icon.purple {
+  background: rgba(156, 39, 176, 0.15);
+  color: #9c27b0;
+}
+
+.stat-trend {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+}
+
+.stat-trend.up {
+  color: var(--success);
+  background: rgba(0, 200, 83, 0.1);
+}
+
+.stat-trend.down {
+  color: var(--danger);
+  background: rgba(255, 23, 68, 0.1);
+}
+
+.stat-value {
+  font-size: 36px;
+  font-weight: 800;
+  margin-bottom: 4px;
+  color: var(--text-primary);
+}
+
+.stat-label {
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+/* ===== 内容卡片 ===== */
+.content-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+  gap: 24px;
+  margin-bottom: 32px;
+}
+
+.content-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.content-card-header {
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.content-card-header h3 {
+  font-size: 16px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.content-card-header h3 .icon {
+  color: var(--accent-primary);
+}
+
+.content-card-body {
+  padding: 24px;
+}
+
+/* ===== 项目列表 ===== */
+.project-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.project-item {
+  display: flex;
+  align-items: center;
+  padding: 16px 20px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--transition-normal);
+}
+
+.project-item:hover {
+  border-color: var(--accent-primary);
+  background: var(--bg-tertiary);
+  transform: translateX(4px);
+}
+
+.project-item.active {
+  border-color: var(--accent-primary);
+  background: var(--accent-primary-glow);
+}
+
+.project-icon {
+  width: 44px;
+  height: 44px;
+  background: var(--accent-primary-glow);
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  margin-right: 16px;
+  flex-shrink: 0;
+}
+
+.project-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.project-name {
+  font-weight: 600;
+  font-size: 15px;
+  margin-bottom: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.project-meta {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.project-status {
+  margin-left: 16px;
+}
+
+.project-actions {
+  display: flex;
+  gap: 8px;
+  margin-left: 16px;
+  opacity: 0;
+  transition: opacity var(--transition-normal);
+}
+
+.project-item:hover .project-actions {
+  opacity: 1;
+}
+
+/* ===== 工作流程 ===== */
+.workflow-container {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 32px;
+  margin-bottom: 32px;
+}
+
+.workflow-title {
+  text-align: center;
+  margin-bottom: 32px;
+}
+
+.workflow-title h3 {
+  font-size: 20px;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.workflow-title p {
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+.workflow-steps {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.workflow-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 20px 24px;
+  background: var(--bg-secondary);
+  border: 2px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  min-width: 140px;
+  cursor: pointer;
+  transition: all var(--transition-normal);
+}
+
+.workflow-step:hover {
+  border-color: var(--border-color-light);
+  transform: translateY(-2px);
+}
+
+.workflow-step.active {
+  border-color: var(--accent-primary);
+  background: var(--accent-primary-glow);
+  box-shadow: var(--shadow-glow-primary);
+}
+
+.workflow-step.completed {
+  border-color: var(--success);
+  background: rgba(0, 200, 83, 0.1);
+}
+
+.workflow-step-number {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--bg-tertiary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-muted);
+  transition: all var(--transition-normal);
+}
+
+.workflow-step.active .workflow-step-number {
+  background: var(--gradient-primary);
+  color: #fff;
+  box-shadow: var(--shadow-glow-primary);
+}
+
+.workflow-step.completed .workflow-step-number {
+  background: var(--gradient-success);
+  color: #fff;
+}
+
+.workflow-step-icon {
+  font-size: 24px;
+}
+
+.workflow-step-title {
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.workflow-step-desc {
+  font-size: 12px;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.workflow-arrow {
+  color: var(--border-color-light);
+  font-size: 20px;
+  font-weight: 700;
+}
+
+/* ===== 上传区域 ===== */
+.upload-zone {
+  border: 2px dashed var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 48px 32px;
+  text-align: center;
+  background: var(--bg-secondary);
+  transition: all var(--transition-normal);
+  cursor: pointer;
+}
+
+.upload-zone:hover {
+  border-color: var(--accent-primary);
+  background: var(--accent-primary-glow);
+}
+
+.upload-zone.dragover {
+  border-color: var(--accent-primary);
+  background: var(--accent-primary-glow);
+  transform: scale(1.02);
+}
+
+.upload-icon {
+  width: 80px;
+  height: 80px;
+  background: var(--accent-primary-glow);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 36px;
+  margin: 0 auto 20px;
+  color: var(--accent-primary);
+  animation: bounce 2s ease-in-out infinite;
+}
+
+@keyframes bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+.upload-title {
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.upload-desc {
+  color: var(--text-muted);
+  font-size: 14px;
+  margin-bottom: 20px;
+}
+
+.upload-formats {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.format-tag {
+  padding: 6px 12px;
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+/* ===== 章节设计 ===== */
+.chapter-tree {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.chapter-node {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  transition: all var(--transition-normal);
+}
+
+.chapter-node:hover {
+  border-color: var(--border-color-light);
+}
+
+.chapter-header {
+  display: flex;
+  align-items: center;
+  padding: 16px 20px;
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+
+.chapter-header:hover {
+  background: var(--bg-tertiary);
+}
+
+.chapter-toggle {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 12px;
+  color: var(--text-muted);
+  transition: transform var(--transition-fast);
+}
+
+.chapter-node.expanded .chapter-toggle {
+  transform: rotate(90deg);
+}
+
+.chapter-icon {
+  width: 36px;
+  height: 36px;
+  background: var(--accent-primary-glow);
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 12px;
+  font-size: 16px;
+  color: var(--accent-primary);
+}
+
+.chapter-info {
+  flex: 1;
+}
+
+.chapter-title {
+  font-weight: 600;
+  font-size: 15px;
+  margin-bottom: 2px;
+}
+
+.chapter-desc {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.chapter-type {
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  font-weight: 600;
+  margin-left: 12px;
+}
+
+.chapter-type.text {
+  background: var(--accent-primary-glow);
+  color: var(--accent-primary);
+}
+
+.chapter-type.table {
+  background: var(--accent-secondary-glow);
+  color: var(--accent-secondary);
+}
+
+.chapter-actions {
+  display: flex;
+  gap: 8px;
+  margin-left: 12px;
+}
+
+.chapter-children {
+  padding: 0 20px 16px 56px;
+  border-top: 1px solid var(--border-color);
+}
+
+.section-item {
+  padding: 12px 16px;
+  margin-top: 8px;
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.section-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent-primary);
+  margin-top: 8px;
+  flex-shrink: 0;
+}
+
+.section-content {
+  flex: 1;
+}
+
+.section-title {
+  font-weight: 500;
+  font-size: 14px;
+  margin-bottom: 2px;
+}
+
+.section-desc {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* ===== 进度条 ===== */
+.progress-container {
+  background: var(--bg-secondary);
+  border-radius: var(--radius-lg);
+  padding: 32px;
+  text-align: center;
+}
+
+.progress-ring {
+  width: 120px;
+  height: 120px;
+  margin: 0 auto 24px;
+  position: relative;
+}
+
+.progress-ring svg {
+  transform: rotate(-90deg);
+}
+
+.progress-ring-bg {
+  fill: none;
+  stroke: var(--border-color);
+  stroke-width: 8;
+}
+
+.progress-ring-fill {
+  fill: none;
+  stroke: url(#progressGradient);
+  stroke-width: 8;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 0.5s ease;
+}
+
+.progress-value {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 28px;
+  font-weight: 800;
+  color: var(--accent-primary);
+}
+
+.progress-title {
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.progress-desc {
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+/* ===== 空状态 ===== */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 64px 32px;
+  text-align: center;
+}
+
+.empty-icon {
+  width: 100px;
+  height: 100px;
+  background: var(--bg-secondary);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 48px;
+  margin-bottom: 24px;
+  color: var(--text-muted);
+}
+
+.empty-title {
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.empty-desc {
+  color: var(--text-muted);
+  font-size: 14px;
+  max-width: 400px;
+  margin-bottom: 24px;
+}
+
+/* ===== 动画 ===== */
+.fade-enter-active, .fade-leave-active {
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.fade-enter-from, .fade-leave-to {
+  opacity: 0;
+  transform: translateY(20px);
+}
+
+.slide-enter-active, .slide-leave-active {
+  transition: all 0.3s ease;
+}
+
+.slide-enter-from, .slide-leave-to {
+  opacity: 0;
+  transform: translateX(-20px);
+}
+
+/* ===== 响应式 ===== */
+@media (max-width: 768px) {
+  .top-navbar {
+    padding: 0 16px;
+    height: 60px;
+  }
+  
+  .navbar-menu {
+    display: none;
+  }
+  
+  .main-content {
+    padding: 16px;
+  }
+  
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .content-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .workflow-steps {
+    flex-direction: column;
+  }
+  
+  .workflow-arrow {
+    transform: rotate(90deg);
+  }
+}
+
+/* ===== 代码高亮 ===== */
+.code-block {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  font-family: 'Fira Code', monospace;
+  font-size: 13px;
+  line-height: 1.6;
+  overflow-x: auto;
+  color: var(--accent-primary);
+}
+
+/* ===== 预分析结果滚动容器 ===== */
+.pre-analysis-scroll {
+  max-height: 360px;
+  overflow-y: auto;
+  line-height: 1.8;
+}
+
+.pre-analysis-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+
+.pre-analysis-scroll::-webkit-scrollbar-track {
+  background: var(--bg-secondary);
+  border-radius: 3px;
+}
+
+.pre-analysis-scroll::-webkit-scrollbar-thumb {
+  background: var(--border-color-light);
+  border-radius: 3px;
+}
+
+.pre-analysis-line {
+  padding: 4px 0;
+  border-bottom: 1px dashed var(--border-color);
+  font-size: 14px;
+  color: var(--text-primary);
+}
+
+.pre-analysis-line:last-child {
+  border-bottom: none;
+}
+
+/* ===== 标签页 ===== */
+.custom-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  background: var(--bg-secondary);
+  border-radius: var(--radius-md);
+  margin-bottom: 24px;
+}
+
+.tab-item {
+  padding: 10px 20px;
+  border-radius: var(--radius-sm);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  color: var(--text-secondary);
+}
+
+.tab-item:hover {
+  color: var(--text-primary);
+}
+
+.tab-item.active {
+  background: var(--accent-primary);
+  color: #fff;
+}
+
+/* ===== 工具提示 ===== */
+.tooltip {
+  position: relative;
+}
+
+.tooltip::after {
+  content: attr(data-tip);
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%) translateY(-8px);
+  padding: 6px 12px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  white-space: nowrap;
+  opacity: 0;
+  visibility: hidden;
+  transition: all var(--transition-fast);
+}
+
+.tooltip:hover::after {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(-50%) translateY(-4px);
+}
+
+/* ===== Word风格文档预览 ===== */
+.doc-preview-wrapper {
+  background: var(--bg-secondary);
+  border-radius: var(--radius-lg);
+  padding: 40px;
+  min-height: 80vh;
+  display: flex;
+  justify-content: center;
+}
+
+.doc-preview-paper {
+  background: #ffffff;
+  width: 210mm;
+  max-width: 100%;
+  min-height: 297mm;
+  padding: 60px 72px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08), 0 0 0 1px rgba(0, 0, 0, 0.04);
+  border-radius: 2px;
+  font-family: 'SimSun', 'STSong', 'Songti SC', serif;
+  font-size: 14px;
+  line-height: 2;
+  color: #333;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+.doc-preview-paper h1 {
+  font-family: 'SimHei', 'STHeiti', 'Heiti SC', sans-serif;
+  font-size: 26px;
+  font-weight: 700;
+  text-align: center;
+  margin: 0 0 32px 0;
+  padding-bottom: 16px;
+  border-bottom: 2px solid #333;
+  line-height: 1.6;
+  color: #1a1a1a;
+}
+
+.doc-preview-paper h2 {
+  font-family: 'SimHei', 'STHeiti', 'Heiti SC', sans-serif;
+  font-size: 18px;
+  font-weight: 700;
+  margin: 32px 0 16px 0;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #ddd;
+  line-height: 1.6;
+  color: #222;
+}
+
+.doc-preview-paper h3 {
+  font-family: 'SimHei', 'STHeiti', 'Heiti SC', sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  margin: 24px 0 12px 0;
+  line-height: 1.6;
+  color: #333;
+}
+
+.doc-preview-paper p {
+  text-indent: 2em;
+  margin: 8px 0;
+  text-align: justify;
+}
+
+.doc-preview-paper ul,
+.doc-preview-paper ol {
+  margin: 12px 0;
+  padding-left: 2em;
+}
+
+.doc-preview-paper li {
+  margin: 6px 0;
+  text-indent: 0;
+}
+
+.doc-preview-paper table.doc-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 16px 0;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.doc-preview-paper table.doc-table th,
+.doc-preview-paper table.doc-table td {
+  border: 1px solid #666;
+  padding: 8px 12px;
+  text-align: left;
+  text-indent: 0;
+}
+
+.doc-preview-paper table.doc-table thead tr {
+  background: #f0f0f0;
+  font-weight: 700;
+}
+
+.doc-preview-paper table.doc-table thead td {
+  font-weight: 700;
+  background: #f0f0f0;
+}
+
+.doc-preview-paper table.doc-table tbody tr:nth-child(even) {
+  background: #fafafa;
+}
+
+.doc-preview-paper strong {
+  font-weight: 700;
+}
+
+.doc-preview-paper em {
+  font-style: italic;
+}
+
+@media print {
+  .doc-preview-wrapper {
+    background: none;
+    padding: 0;
+  }
+  .doc-preview-paper {
+    box-shadow: none;
+    padding: 20mm 25mm;
+  }
+}
+</style>
+</head>
+<body>
+<div id="app">
+  <!-- 登录页 -->
+  <div v-if="!isLoggedIn" class="login-page">
+    <div class="login-card">
+      <div class="login-logo">AI</div>
+      <h1>AI智能招投标系统</h1>
+      <p>基于大模型与RAG技术的智能投标文件生成平台</p>
+      
+      <div class="login-features">
+        <div class="login-feature">
+          <span class="icon">⚡</span>
+          <span>AI智能生成</span>
+        </div>
+        <div class="login-feature">
+          <span class="icon">🎯</span>
+          <span>精准匹配</span>
+        </div>
+        <div class="login-feature">
+          <span class="icon">📊</span>
+          <span>数据分析</span>
+        </div>
+      </div>
+      
+      <el-form @submit.prevent="handleLogin">
+        <el-form-item>
+          <el-input 
+            v-model="loginFingerprint" 
+            placeholder="请输入用户标识（或留空自动生成）" 
+            size="large" 
+            prefix-icon="User" 
+            clearable
+          ></el-input>
+        </el-form-item>
+        <el-button 
+          type="primary" 
+          size="large" 
+          style="width:100%;height:50px;font-size:16px" 
+          @click="handleLogin" 
+          :loading="loginLoading"
+        >
+          <el-icon style="margin-right:8px"><ArrowRight /></el-icon>
+          进入系统
+        </el-button>
+      </el-form>
+      
+      <div style="margin-top:24px;text-align:center;color:var(--text-muted);font-size:13px">
+        首次使用将自动创建账户
+      </div>
+    </div>
+  </div>
+
+  <!-- 主应用 -->
+  <div v-else class="app-layout">
+    <!-- 顶部导航 -->
+    <header class="top-navbar">
+      <div class="navbar-brand">
+        <div class="logo">AI</div>
+        <div class="brand-text">
+          AI招投标系统
+          <span>Intelligent Bidding Platform</span>
+        </div>
+      </div>
+      
+      <nav class="navbar-menu">
+        <div 
+          v-for="item in menuItems" 
+          :key="item.key"
+          class="nav-item"
+          :class="{active: currentPage === item.key}"
+          @click="currentPage = item.key"
+        >
+          <el-icon><component :is="item.icon" /></el-icon>
+          <span>{{ item.label }}</span>
+        </div>
+      </nav>
+      
+      <div class="navbar-actions">
+        <el-tag v-if="currentBiddingId" type="success" effect="dark" size="large" round>
+          <el-icon style="margin-right:4px"><Document /></el-icon>
+          项目 #{{ currentBiddingId }}
+        </el-tag>
+        <el-tag v-else type="info" effect="dark" size="large" round>
+          <el-icon style="margin-right:4px"><InfoFilled /></el-icon>
+          未选择项目
+        </el-tag>
+        
+        <div class="user-info" @click="logout">
+          <div class="user-avatar">{{ userId ? String(userId).slice(-2) : 'U' }}</div>
+          <span class="user-name">用户 #{{ userId }}</span>
+          <el-icon><ArrowDown /></el-icon>
+        </div>
+      </div>
+    </header>
+
+    <!-- 主内容 -->
+    <main class="main-content">
+      <!-- 仪表盘 -->
+      <div v-if="currentPage === 'dashboard'" class="fade-in">
+        <div class="page-header">
+          <h2>
+            <el-icon style="color:var(--accent-primary)"><Monitor /></el-icon>
+            工作台
+          </h2>
+          <p>概览您的招投标项目状态和数据</p>
+        </div>
+
+        <!-- 统计卡片 -->
+        <div class="stats-grid">
+          <div class="stat-card" @click="currentPage = 'projects'">
+            <div class="stat-header">
+              <div class="stat-icon blue">📁</div>
+              <div class="stat-trend up">
+                <el-icon><ArrowUp /></el-icon>
+                <span>+12%</span>
+              </div>
+            </div>
+            <div class="stat-value">{{ stats.totalProjects }}</div>
+            <div class="stat-label">总项目数</div>
+          </div>
+          
+          <div class="stat-card success" @click="currentPage = 'projects'">
+            <div class="stat-header">
+              <div class="stat-icon green">✅</div>
+              <div class="stat-trend up">
+                <el-icon><ArrowUp /></el-icon>
+                <span>+5</span>
+              </div>
+            </div>
+            <div class="stat-value">{{ stats.completedProjects }}</div>
+            <div class="stat-label">已完成</div>
+          </div>
+          
+          <div class="stat-card warning" @click="currentPage = 'upload'">
+            <div class="stat-header">
+              <div class="stat-icon orange">⏳</div>
+              <div class="stat-trend down">
+                <el-icon><ArrowDown /></el-icon>
+                <span>-2</span>
+              </div>
+            </div>
+            <div class="stat-value">{{ stats.pendingProjects }}</div>
+            <div class="stat-label">待处理</div>
+          </div>
+          
+          <div class="stat-card" @click="currentPage = 'analysis'">
+            <div class="stat-header">
+              <div class="stat-icon purple">🤖</div>
+              <div class="stat-trend up">
+                <el-icon><ArrowUp /></el-icon>
+                <span>+8%</span>
+              </div>
+            </div>
+            <div class="stat-value">{{ stats.aiAnalysisCount }}</div>
+            <div class="stat-label">AI分析次数</div>
+          </div>
+        </div>
+
+        <!-- 工作流程 -->
+        <div class="workflow-container">
+          <div class="workflow-title">
+            <h3>🚀 快速开始</h3>
+            <p>按照以下步骤完成投标文件生成</p>
+          </div>
+          
+          <div class="workflow-steps">
+            <div 
+              v-for="(step, index) in workflowSteps" 
+              :key="index"
+              class="workflow-step"
+              :class="{active: currentStep === index, completed: currentStep > index}"
+              @click="goToStep(step.page)"
+            >
+              <div class="workflow-step-number">{{ index + 1 }}</div>
+              <div class="workflow-step-icon">{{ step.icon }}</div>
+              <div class="workflow-step-title">{{ step.title }}</div>
+              <div class="workflow-step-desc">{{ step.desc }}</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 最近项目 -->
+        <div class="content-card">
+          <div class="content-card-header">
+            <h3>
+              <el-icon><Clock /></el-icon>
+              最近项目
+            </h3>
+            <el-button type="primary" size="small" @click="currentPage = 'projects'">
+              查看全部
+            </el-button>
+          </div>
+          <div class="content-card-body">
+            <div v-if="recentProjects.length" class="project-list">
+              <div 
+                v-for="project in recentProjects" 
+                :key="project.id"
+                class="project-item"
+                :class="{active: currentBiddingId === project.id}"
+                @click="selectProject(project)"
+              >
+                <div class="project-icon">📄</div>
+                <div class="project-info">
+                  <div class="project-name">{{ project.original_filename }}</div>
+                  <div class="project-meta">
+                    ID: {{ project.id }} · {{ formatDate(project.created_at) }}
+                  </div>
+                </div>
+                <div class="project-status">
+                  <el-tag :type="statusType(project.status)" size="small" effect="dark">
+                    {{ project.status }}
+                  </el-tag>
+                </div>
+                <div class="project-actions">
+                  <el-button type="primary" size="small" circle @click.stop="analyzeProject(project)">
+                    <el-icon><DataAnalysis /></el-icon>
+                  </el-button>
+                </div>
+              </div>
+            </div>
+            <div v-else class="empty-state">
+              <div class="empty-icon">📂</div>
+              <div class="empty-title">暂无项目</div>
+              <div class="empty-desc">点击上方"快速开始"上传您的第一个招标文件</div>
+              <el-button type="primary" @click="currentPage = 'upload'">
+                上传文件
+              </el-button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 项目列表 -->
+      <div v-if="currentPage === 'projects'" class="fade-in">
+        <div class="page-header">
+          <h2>
+            <el-icon style="color:var(--accent-primary)"><FolderOpened /></el-icon>
+            项目管理
+          </h2>
+          <p>管理您的所有招投标项目</p>
+        </div>
+        
+        <el-card>
+          <template #header>
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <span>所有项目</span>
+              <el-button type="primary" @click="currentPage = 'upload'">
+                <el-icon><Plus /></el-icon>
+                新建项目
+              </el-button>
+            </div>
+          </template>
+          
+          <el-table :data="biddingList" stripe style="width:100%">
+            <el-table-column prop="id" label="ID" width="80" />
+            <el-table-column prop="original_filename" label="文件名" min-width="250" />
+            <el-table-column prop="status" label="状态" width="120">
+              <template #default="{row}">
+                <el-tag :type="statusType(row.status)" effect="dark" size="small">
+                  {{ row.status }}
+                </el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column prop="created_at" label="创建时间" width="180">
+              <template #default="{row}">
+                {{ formatDate(row.created_at) }}
+              </template>
+            </el-table-column>
+            <el-table-column label="操作" width="280" fixed="right">
+              <template #default="{row}">
+                <el-button type="primary" size="small" @click="selectProject(row)">选择</el-button>
+                <el-button type="success" size="small" @click="analyzeProject(row)">分析</el-button>
+                <el-button v-if="row.status === 'Generated' || row.status === 'Completed'" 
+                           type="warning" size="small" @click="viewProject(row)">查看</el-button>
+              </template>
+            </el-table-column>
+          </el-table>
+        </el-card>
+      </div>
+
+      <!-- 文件上传 -->
+      <div v-if="currentPage === 'upload'" class="fade-in">
+        <div class="page-header" style="display:flex;justify-content:space-between;align-items:flex-start">
+          <div>
+            <h2>
+              <el-icon style="color:var(--accent-primary)"><Upload /></el-icon>
+              上传招标文件
+            </h2>
+            <p>上传招标文件开始AI智能分析</p>
+          </div>
+          <div style="display:flex;gap:8px">
+            <el-button type="primary" @click="currentPage = 'analysis'" :disabled="!currentBiddingId">
+              下一步 <el-icon><ArrowRight /></el-icon>
+            </el-button>
+          </div>
+        </div>
+
+        <el-card>
+          <div 
+            class="upload-zone"
+            :class="{dragover: isDragging}"
+            @dragover.prevent="isDragging = true"
+            @dragleave.prevent="isDragging = false"
+            @drop.prevent="handleDrop"
+            @click="$refs.fileInput.click()"
+          >
+            <input 
+              ref="fileInput" 
+              type="file" 
+              style="display:none" 
+              accept=".pdf,.doc,.docx,.txt"
+              @change="handleFileSelect"
+            >
+            <div class="upload-icon">📤</div>
+            <div class="upload-title">拖拽文件到此处，或点击上传</div>
+            <div class="upload-desc">支持 PDF、Word、TXT 格式，单个文件最大 50MB</div>
+            <div class="upload-formats">
+              <span class="format-tag">PDF</span>
+              <span class="format-tag">DOC</span>
+              <span class="format-tag">DOCX</span>
+              <span class="format-tag">TXT</span>
+            </div>
+          </div>
+
+          <div v-if="uploadProgress > 0 && uploadProgress < 100" style="margin-top:24px">
+            <el-progress :percentage="uploadProgress" :stroke-width="10" status="success" />
+          </div>
+        </el-card>
+
+        <el-card v-if="currentBiddingId" style="margin-top:24px">
+          <template #header>
+            <span>当前项目</span>
+          </template>
+          <el-descriptions :column="2" border>
+            <el-descriptions-item label="项目ID">{{ currentBiddingId }}</el-descriptions-item>
+            <el-descriptions-item label="文件名">{{ currentFileName }}</el-descriptions-item>
+            <el-descriptions-item label="状态">
+              <el-tag type="success" effect="dark">已上传</el-tag>
+            </el-descriptions-item>
+          </el-descriptions>
+          <div style="margin-top:20px">
+            <el-button type="primary" size="large" @click="currentPage = 'analysis'">
+              下一步：AI智能分析
+              <el-icon class="el-icon--right"><ArrowRight /></el-icon>
+            </el-button>
+          </div>
+        </el-card>
+      </div>
+
+      <!-- AI分析 -->
+      <div v-if="currentPage === 'analysis'" class="fade-in">
+        <div class="page-header" style="display:flex;justify-content:space-between;align-items:flex-start">
+          <div>
+            <h2>
+              <el-icon style="color:var(--accent-primary)"><DataAnalysis /></el-icon>
+              AI智能分析
+            </h2>
+            <p>AI自动分析招标文件，提取关键信息</p>
+          </div>
+          <div style="display:flex;gap:8px">
+            <el-button @click="currentPage = 'upload'">
+              <el-icon><ArrowLeft /></el-icon> 上一步
+            </el-button>
+            <el-button type="primary" @click="currentPage = 'design'" :disabled="!directoryStructure">
+              下一步 <el-icon><ArrowRight /></el-icon>
+            </el-button>
+          </div>
+        </div>
+
+        <div v-if="!currentBiddingId" class="empty-state">
+          <div class="empty-icon">📂</div>
+          <div class="empty-title">请先选择项目</div>
+          <div class="empty-desc">您需要先上传或选择一个招标文件项目</div>
+          <el-button type="primary" @click="currentPage = 'upload'">去上传</el-button>
+        </div>
+
+        <template v-else>
+          <el-card style="margin-bottom:24px">
+            <div style="display:flex;gap:16px;margin-bottom:24px">
+              <el-button 
+                type="primary" 
+                size="large" 
+                :loading="preAnalysisLoading"
+                @click="runPreAnalysis"
+              >
+                <el-icon><Aim /></el-icon>
+                预分析
+              </el-button>
+              <el-button 
+                type="success" 
+                size="large" 
+                :loading="chapterAnalysisLoading"
+                @click="runChapterAnalysis"
+                :disabled="!analysisData"
+              >
+                <el-icon><List /></el-icon>
+                章节分析
+              </el-button>
+            </div>
+
+            <el-steps :active="analysisStep" finish-status="success" simple>
+              <el-step title="上传文件" />
+              <el-step title="预分析" />
+              <el-step title="章节分析" />
+              <el-step title="完成" />
+            </el-steps>
+          </el-card>
+
+          <div v-if="analysisData" style="display:grid;gap:20px">
+            <el-card>
+              <template #header>
+                <span><el-icon><DocumentChecked /></el-icon> 必须包含的文件和材料</span>
+              </template>
+              <div class="pre-analysis-scroll">
+                <div v-for="(line, idx) in splitLines(analysisData.bidding_requirements)" :key="idx" class="pre-analysis-line">{{ line }}</div>
+              </div>
+            </el-card>
+
+            <el-card>
+              <template #header>
+                <span><el-icon><Document /></el-icon> 招标书摘要</span>
+              </template>
+              <div class="pre-analysis-scroll">
+                <div v-for="(line, idx) in splitLines(analysisData.bidding_summary)" :key="idx" class="pre-analysis-line">{{ line }}</div>
+              </div>
+            </el-card>
+
+            <el-card>
+              <template #header>
+                <span><el-icon><Star /></el-icon> 实质性要求与评分标准</span>
+              </template>
+              <div class="pre-analysis-scroll">
+                <div v-for="(line, idx) in splitLines(analysisData.bidding_meta)" :key="idx" class="pre-analysis-line">{{ line }}</div>
+              </div>
+            </el-card>
+          </div>
+
+          <el-card v-if="directoryStructure" style="margin-top:20px">
+            <template #header>
+              <span><el-icon><List /></el-icon> 章节分析结果</span>
+            </template>
+            <div class="code-block">{{ directoryStructure }}</div>
+          </el-card>
+
+          <div v-if="analysisData && directoryStructure" style="margin-top:24px;text-align:center">
+            <el-button type="primary" size="large" @click="currentPage = 'design'">
+              下一步：章节设计
+              <el-icon class="el-icon--right"><ArrowRight /></el-icon>
+            </el-button>
+          </div>
+        </template>
+      </div>
+
+      <!-- 章节设计 -->
+      <div v-if="currentPage === 'design'" class="fade-in">
+        <div class="page-header" style="display:flex;justify-content:space-between;align-items:flex-start">
+          <div>
+            <h2>
+              <el-icon style="color:var(--accent-primary)"><EditPen /></el-icon>
+              章节设计
+            </h2>
+            <p>设计投标文件的章节结构</p>
+          </div>
+          <div style="display:flex;gap:8px">
+            <el-button @click="currentPage = 'analysis'">
+              <el-icon><ArrowLeft /></el-icon> 上一步
+            </el-button>
+            <el-button type="primary" @click="currentPage = 'generate'" :disabled="!chapterDesign">
+              下一步 <el-icon><ArrowRight /></el-icon>
+            </el-button>
+          </div>
+        </div>
+
+        <div v-if="!analysisData" class="empty-state">
+          <div class="empty-icon">🤖</div>
+          <div class="empty-title">请先完成AI分析</div>
+          <div class="empty-desc">章节设计需要基于AI分析的结果</div>
+          <el-button type="primary" @click="currentPage = 'analysis'">去分析</el-button>
+        </div>
+
+        <template v-else>
+          <el-card>
+            <template #header>
+              <div style="display:flex;justify-content:space-between;align-items:center">
+                <span>投标书章节结构</span>
+                <el-button type="primary" :loading="chapterDesignLoading" @click="runChapterDesign">
+                  <el-icon><MagicStick /></el-icon>
+                  AI生成章节
+                </el-button>
+              </div>
+            </template>
+
+            <div v-if="chapterDesign && chapterDesign.length" class="chapter-tree">
+              <div 
+                v-for="(chapter, idx) in chapterDesign" 
+                :key="idx"
+                class="chapter-node"
+                :class="{expanded: expandedChapters[idx]}"
+              >
+                <div class="chapter-header" @click="toggleChapter(idx)">
+                  <div class="chapter-toggle">
+                    <el-icon><ArrowRight /></el-icon>
+                  </div>
+                  <div class="chapter-icon">{{ chapter.type === 'table' ? '📊' : '📝' }}</div>
+                  <div class="chapter-info">
+                    <div class="chapter-title">{{ chapter.title }}</div>
+                    <div class="chapter-desc">{{ chapter.sections ? chapter.sections.length : 0 }} 个子章节</div>
+                  </div>
+                  <div class="chapter-type" :class="chapter.type">
+                    {{ chapter.type === 'table' ? '表格' : '文本' }}
+                  </div>
+                </div>
+                
+                <div v-if="expandedChapters[idx]" class="chapter-children">
+                  <div v-if="chapter.content" style="padding:12px;background:var(--bg-tertiary);border-radius:var(--radius-sm);margin-bottom:12px;font-size:13px;color:var(--text-secondary)">
+                    {{ chapter.content }}
+                  </div>
+                  <div 
+                    v-for="(section, sIdx) in chapter.sections" 
+                    :key="sIdx"
+                    class="section-item"
+                  >
+                    <div class="section-dot"></div>
+                    <div class="section-content">
+                      <div class="section-title">{{ section.title }}</div>
+                      <div v-if="section.describe" class="section-desc">{{ section.describe }}</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div v-else class="empty-state">
+              <div class="empty-icon">📋</div>
+              <div class="empty-title">点击上方按钮生成章节结构</div>
+              <div class="empty-desc">AI将根据招标书内容自动设计投标书的章节目录</div>
+            </div>
+
+            <div v-if="chapterDesign && chapterDesign.length" style="margin-top:24px;text-align:center">
+              <el-button type="primary" size="large" @click="currentPage = 'generate'">
+                下一步：生成投标文件
+                <el-icon class="el-icon--right"><ArrowRight /></el-icon>
+              </el-button>
+            </div>
+          </el-card>
+        </template>
+      </div>
+
+      <!-- 生成文档 -->
+      <div v-if="currentPage === 'generate'" class="fade-in">
+        <div class="page-header" style="display:flex;justify-content:space-between;align-items:flex-start">
+          <div>
+            <h2>
+              <el-icon style="color:var(--accent-primary)"><Document /></el-icon>
+              生成投标文件
+            </h2>
+            <p>AI生成完整的投标文件</p>
+          </div>
+          <div style="display:flex;gap:8px">
+            <el-button @click="currentPage = 'design'">
+              <el-icon><ArrowLeft /></el-icon> 上一步
+            </el-button>
+            <el-button type="primary" @click="currentPage = 'preview'" :disabled="!documentGenerated">
+              下一步 <el-icon><ArrowRight /></el-icon>
+            </el-button>
+          </div>
+        </div>
+
+        <div v-if="!chapterDesign" class="empty-state">
+          <div class="empty-icon">📄</div>
+          <div class="empty-title">请先完成章节设计</div>
+          <div class="empty-desc">生成投标文件需要基于已设计的章节结构</div>
+          <el-button type="primary" @click="currentPage = 'design'">去设计</el-button>
+        </div>
+
+        <template v-else>
+          <el-card>
+            <div v-if="!documentGenerated" class="progress-container">
+              <svg width="0" height="0">
+                <defs>
+                  <linearGradient id="progressGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" stop-color="#00d4ff" />
+                    <stop offset="100%" stop-color="#0099cc" />
+                  </linearGradient>
+                </defs>
+              </svg>
+              
+              <div class="progress-ring">
+                <svg width="120" height="120">
+                  <circle class="progress-ring-bg" cx="60" cy="60" r="52"></circle>
+                  <circle 
+                    class="progress-ring-fill" 
+                    cx="60" 
+                    cy="60" 
+                    r="52"
+                    :stroke-dasharray="326.73"
+                    :stroke-dashoffset="326.73 - (326.73 * generateProgress / 100)"
+                  ></circle>
+                </svg>
+                <div class="progress-value">{{ generateProgress }}%</div>
+              </div>
+              
+              <div class="progress-title">{{ generateStatusText || '准备生成...' }}</div>
+              <div class="progress-desc">AI正在根据章节设计生成投标文件内容</div>
+              
+              <el-button 
+                v-if="generateProgress === 0" 
+                type="primary" 
+                size="large" 
+                style="margin-top:24px"
+                :loading="generateLoading"
+                @click="runGenerate"
+              >
+                <el-icon><VideoPlay /></el-icon>
+                开始生成
+              </el-button>
+            </div>
+
+            <div v-else style="text-align:center;padding:40px">
+              <div style="font-size:64px;margin-bottom:20px">🎉</div>
+              <h3 style="font-size:24px;font-weight:700;margin-bottom:12px">投标文件生成完成！</h3>
+              <p style="color:var(--text-muted);margin-bottom:32px">您的投标文件已生成完毕，可以在线预览或下载</p>
+              <div style="display:flex;gap:16px;justify-content:center">
+                <el-button type="primary" size="large" @click="currentPage = 'preview'">
+                  <el-icon><View /></el-icon>
+                  在线预览
+                </el-button>
+                <el-button size="large" @click="downloadDocument">
+                  <el-icon><Download /></el-icon>
+                  下载文档
+                </el-button>
+              </div>
+            </div>
+          </el-card>
+        </template>
+      </div>
+
+      <!-- 文档预览 -->
+      <div v-if="currentPage === 'preview'" class="fade-in">
+        <div class="page-header" style="display:flex;justify-content:space-between;align-items:flex-start">
+          <div>
+            <h2>
+              <el-icon style="color:var(--accent-primary)"><Reading /></el-icon>
+              文档预览
+            </h2>
+            <p>以类似Word的排版方式在线查看投标文件</p>
+          </div>
+          <div style="display:flex;gap:8px">
+            <el-button @click="currentPage = 'generate'">
+              <el-icon><ArrowLeft /></el-icon> 上一步
+            </el-button>
+          </div>
+        </div>
+
+        <div v-if="!documentGenerated" class="empty-state">
+          <div class="empty-icon">📝</div>
+          <div class="empty-title">暂无已生成的文档</div>
+          <div class="empty-desc">请先完成投标文件生成步骤</div>
+          <el-button type="primary" @click="currentPage = 'generate'">去生成</el-button>
+        </div>
+
+        <template v-else>
+          <!-- 工具栏 -->
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;padding:16px 24px;background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius-md)">
+            <div style="display:flex;align-items:center;gap:12px">
+              <el-icon style="font-size:20px;color:var(--accent-primary)"><Document /></el-icon>
+              <span style="font-weight:600;font-size:15px">{{ currentFileName || '投标文件' }}</span>
+              <el-tag type="success" size="small">只读预览</el-tag>
+            </div>
+            <div style="display:flex;gap:12px">
+              <el-button @click="downloadDocument">
+                <el-icon><Download /></el-icon>
+                下载Word
+              </el-button>
+              <el-button type="primary" @click="currentPage = 'dashboard'">
+                <el-icon><HomeFilled /></el-icon>
+                返回首页
+              </el-button>
+            </div>
+          </div>
+
+          <!-- Word风格文档预览 -->
+          <div class="doc-preview-wrapper">
+            <div v-if="previewLoading" class="empty-state" style="padding:80px 32px">
+              <div class="empty-icon">⏳</div>
+              <div class="empty-title">加载文档中...</div>
+            </div>
+            <div v-else-if="previewContent" class="doc-preview-paper" v-html="renderedPreviewHtml"></div>
+            <div v-else class="empty-state" style="padding:80px 32px">
+              <div class="empty-icon">⚠️</div>
+              <div class="empty-title">文档内容加载失败</div>
+              <div class="empty-desc">请尝试重新生成文档</div>
+            </div>
+          </div>
+        </template>
+      </div>
+    </main>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/vue@3.5.13/dist/vue.global.prod.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/element-plus@2.9.1/dist/index.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@element-plus/icons-vue@2.3.1/dist/index.iife.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/axios@1.7.9/dist/axios.min.js"></script>
+<script>
+const { createApp, ref, reactive, computed, onMounted, watch, nextTick } = Vue;
+
+const app = createApp({
+  setup() {
+    const apiBase = window.location.origin;
+    
+    // 用户状态
+    const isLoggedIn = ref(false);
+    const userId = ref(null);
+    const loginFingerprint = ref('');
+    const loginLoading = ref(false);
+    
+    // 页面状态
+    const currentPage = ref('dashboard');
+    const currentBiddingId = ref(null);
+    const currentFileName = ref('');
+    
+    // 数据统计
+    const stats = reactive({
+      totalProjects: 0,
+      completedProjects: 0,
+      pendingProjects: 0,
+      aiAnalysisCount: 0
+    });
+    
+    // 项目列表
+    const biddingList = ref([]);
+    const recentProjects = computed(() => biddingList.value.slice(0, 5));
+    
+    // AI分析数据
+    const analysisData = ref(null);
+    const directoryStructure = ref(null);
+    const preAnalysisLoading = ref(false);
+    const chapterAnalysisLoading = ref(false);
+    
+    // 章节设计
+    const chapterDesignLoading = ref(false);
+    const chapterDesign = ref(null);
+    const expandedChapters = ref({});
+    
+    // 文档生成
+    const generateLoading = ref(false);
+    const generateProgress = ref(0);
+    const generateStatusText = ref('');
+    const documentGenerated = ref(false);
+    const previewContent = ref('');
+    const previewLoading = ref(false);
+    const fileUrl = ref('');
+    
+    // 上传
+    const isDragging = ref(false);
+    const uploadProgress = ref(0);
+    
+    // 菜单项
+    const menuItems = [
+      { key: 'dashboard', label: '工作台', icon: 'Monitor' },
+      { key: 'projects', label: '项目管理', icon: 'FolderOpened' },
+      { key: 'upload', label: '文件上传', icon: 'Upload' },
+      { key: 'analysis', label: 'AI分析', icon: 'DataAnalysis' },
+      { key: 'design', label: '章节设计', icon: 'EditPen' },
+      { key: 'generate', label: '生成文档', icon: 'Document' },
+      { key: 'preview', label: '文档预览', icon: 'Reading' }
+    ];
+    
+    // 工作流步骤
+    const workflowSteps = [
+      { icon: '📤', title: '上传文件', desc: '上传招标文件', page: 'upload' },
+      { icon: '🤖', title: 'AI分析', desc: '智能提取信息', page: 'analysis' },
+      { icon: '📋', title: '章节设计', desc: '设计文档结构', page: 'design' },
+      { icon: '⚡', title: '生成文档', desc: 'AI生成内容', page: 'generate' },
+      { icon: '✏️', title: '文档预览', desc: '查看和导出', page: 'preview' }
+    ];
+    
+    const currentStep = computed(() => {
+      if (documentGenerated.value) return 5;
+      if (chapterDesign.value) return 4;
+      if (directoryStructure.value) return 3;
+      if (analysisData.value) return 2;
+      if (currentBiddingId.value) return 1;
+      return 0;
+    });
+    
+    const analysisStep = computed(() => {
+      if (directoryStructure.value) return 3;
+      if (analysisData.value) return 2;
+      if (currentBiddingId.value) return 1;
+      return 0;
+    });
+
+    // 方法
+    function statusType(status) {
+      const map = { 
+        'Uploaded': 'info', 
+        'Generated': 'success', 
+        'Edited': 'warning',
+        'Completed': 'success'
+      };
+      return map[status] || 'info';
+    }
+    
+    function formatDate(dateStr) {
+      if (!dateStr) return '-';
+      const date = new Date(dateStr);
+      return date.toLocaleString('zh-CN', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    }
+
+    function splitLines(text) {
+      if (!text) return [];
+      let lines = text.split('\n').filter(l => l.trim() !== '');
+      if (lines.length > 2) return lines;
+      // 按序号拆分: "1. " "1、" "（1）" "(1)" "一、" "①" 等
+      const parts = text.split(/(?=\d+[\.、\)]|（\d+）|\(\d+\)|[一二三四五六七八九十]+、|①|②|③|④|⑤|⑥|⑦|⑧|⑨|⑩)/);
+      lines = parts.map(p => p.trim()).filter(p => p.length > 3);
+      if (lines.length > 2) return lines;
+      // 兜底: 按句号分句
+      lines = text.split(/[。！？]/).map(p => p.trim()).filter(p => p.length > 5);
+      return lines.length > 1 ? lines : [text];
+    }
+
+    function toggleChapter(idx) {
+      expandedChapters.value[idx] = !expandedChapters.value[idx];
+    }
+    
+    async function handleLogin() {
+      loginLoading.value = true;
+      try {
+        const fp = loginFingerprint.value.trim() || 'user-' + Date.now();
+        const res = await axios.post(apiBase + '/api/users/identify', { 
+          fingerprintId: fp 
+        });
+        userId.value = res.data.userId;
+        isLoggedIn.value = true;
+        localStorage.setItem('bidding_userId', userId.value);
+        localStorage.setItem('bidding_fp', fp);
+        await fetchBiddingList();
+        ElementPlus.ElMessage.success('登录成功！');
+      } catch (e) {
+        ElementPlus.ElMessage.error('登录失败: ' + (e.response?.data?.error || e.message));
+      } finally {
+        loginLoading.value = false;
+      }
+    }
+    
+    function logout() {
+      localStorage.removeItem('bidding_userId');
+      localStorage.removeItem('bidding_fp');
+      isLoggedIn.value = false;
+      userId.value = null;
+      currentPage.value = 'dashboard';
+    }
+    
+    async function fetchBiddingList() {
+      try {
+        const res = await axios.get(apiBase + '/api/bidding/list?userId=' + userId.value);
+        biddingList.value = res.data.biddingList || [];
+        stats.totalProjects = biddingList.value.length;
+        stats.completedProjects = biddingList.value.filter(p => p.status === 'Generated' || p.status === 'Completed').length;
+        stats.pendingProjects = biddingList.value.filter(p => p.status === 'Uploaded').length;
+      } catch (e) {
+        console.error('获取项目列表失败:', e);
+      }
+    }
+    
+    function selectProject(project) {
+      currentBiddingId.value = project.id;
+      currentFileName.value = project.original_filename;
+      
+      // 根据项目状态恢复进度，允许用户查看已完成的步骤
+      const status = project.status;
+      if (status === 'Generated' || status === 'Completed') {
+        documentGenerated.value = true;
+      }
+      
+      ElementPlus.ElMessage.success('已选择项目: ' + project.original_filename);
+      // 自动跳转到对应步骤
+      if (status === 'Generated' || status === 'Completed') {
+        currentPage.value = 'preview';
+        loadDocumentPreview();
+      } else {
+        currentPage.value = 'analysis';
+      }
+    }
+    
+    function analyzeProject(project) {
+      selectProject(project);
+      currentPage.value = 'analysis';
+    }
+    
+    function viewProject(project) {
+      currentBiddingId.value = project.id;
+      currentFileName.value = project.original_filename;
+      documentGenerated.value = true;
+      currentPage.value = 'preview';
+      loadDocumentPreview();
+    }
+    
+    function goToStep(page) {
+      currentPage.value = page;
+    }
+    
+    function handleFileSelect(e) {
+      const file = e.target.files[0];
+      if (file) uploadFile(file);
+    }
+    
+    function handleDrop(e) {
+      isDragging.value = false;
+      const file = e.dataTransfer.files[0];
+      if (file) uploadFile(file);
+    }
+    
+    async function uploadFile(file) {
+      const validTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'text/plain'];
+      const validExts = ['.pdf', '.doc', '.docx', '.txt'];
+      const ext = '.' + file.name.split('.').pop().toLowerCase();
+      
+      if (!validTypes.includes(file.type) && !validExts.includes(ext)) {
+        ElementPlus.ElMessage.error('仅支持 PDF、DOC、DOCX、TXT 文件');
+        return;
+      }
+      
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('userId', userId.value);
+      
+      uploadProgress.value = 0;
+      
+      try {
+        const res = await axios.post(apiBase + '/api/bidding/upload', formData, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+          onUploadProgress: (progress) => {
+            uploadProgress.value = Math.round((progress.loaded * 100) / progress.total);
+          }
+        });
+        
+        if (res.data.biddingId) {
+          currentBiddingId.value = res.data.biddingId;
+          currentFileName.value = res.data.originalFilename;
+          uploadProgress.value = 100;
+          ElementPlus.ElMessage.success('文件上传成功！');
+          await fetchBiddingList();
+          
+          setTimeout(() => {
+            uploadProgress.value = 0;
+          }, 1000);
+        }
+      } catch (e) {
+        ElementPlus.ElMessage.error('上传失败: ' + (e.response?.data?.error || e.message));
+        uploadProgress.value = 0;
+      }
+    }
+    
+    async function runPreAnalysis() {
+      preAnalysisLoading.value = true;
+      try {
+        const res = await axios.post(apiBase + '/api/bidding/pre-analysis_bid', { 
+          biddingId: currentBiddingId.value 
+        }, { timeout: 360000 }); // 6分钟超时
+        analysisData.value = res.data;
+        stats.aiAnalysisCount++;
+        ElementPlus.ElMessage.success('预分析完成！');
+      } catch (e) {
+        if (e.code === 'ECONNABORTED' || e.message?.includes('timeout')) {
+          ElementPlus.ElMessage.error('预分析超时，请稍后重试');
+        } else {
+          ElementPlus.ElMessage.error('预分析失败: ' + (e.response?.data?.error || e.message));
+        }
+      } finally {
+        preAnalysisLoading.value = false;
+      }
+    }
+    
+    async function runChapterAnalysis() {
+      chapterAnalysisLoading.value = true;
+      try {
+        const res = await axios.post(apiBase + '/api/bidding/chapter-analysis_bid', { 
+          biddingId: currentBiddingId.value 
+        }, { timeout: 360000 }); // 6分钟超时
+        directoryStructure.value = res.data.chapter_format || JSON.stringify(res.data, null, 2);
+        ElementPlus.ElMessage.success('章节分析完成！');
+      } catch (e) {
+        if (e.code === 'ECONNABORTED' || e.message?.includes('timeout')) {
+          ElementPlus.ElMessage.error('章节分析超时，请稍后重试（AI正在处理大量文本）');
+        } else {
+          ElementPlus.ElMessage.error('章节分析失败: ' + (e.response?.data?.error || e.message));
+        }
+      } finally {
+        chapterAnalysisLoading.value = false;
+      }
+    }
+    
+    async function runChapterDesign() {
+      chapterDesignLoading.value = true;
+      try {
+        const res = await axios.post(apiBase + '/api/bidding/chapter-design', { 
+          biddingId: currentBiddingId.value 
+        }, { timeout: 660000 }); // 11分钟超时（后端最多重试2次，每次600秒）
+        chapterDesign.value = res.data.chapters || res.data;
+        expandedChapters.value = {};
+        if (Array.isArray(chapterDesign.value)) {
+          chapterDesign.value.forEach((_, i) => { expandedChapters.value[i] = true; });
+        }
+        ElementPlus.ElMessage.success('章节设计完成！');
+      } catch (e) {
+        if (e.code === 'ECONNABORTED' || e.message?.includes('timeout')) {
+          ElementPlus.ElMessage.error('章节设计超时，AI处理时间较长，请稍后重试');
+        } else {
+          ElementPlus.ElMessage.error('章节设计失败: ' + (e.response?.data?.error || e.message));
+        }
+      } finally {
+        chapterDesignLoading.value = false;
+      }
+    }
+    
+    async function runGenerate() {
+      generateLoading.value = true;
+      generateProgress.value = 5;
+      
+      const progressInterval = setInterval(() => {
+        if (generateProgress.value < 90) {
+          generateProgress.value += Math.floor(Math.random() * 8) + 2;
+          if (generateProgress.value > 90) generateProgress.value = 90;
+        }
+        const texts = ['正在分析需求...', '检索知识库...', '生成章节内容...', '优化文档格式...', '合并文档...'];
+        generateStatusText.value = texts[Math.floor(Math.random() * texts.length)];
+      }, 2000);
+      
+      try {
+        const res = await axios.post(apiBase + '/api/bidding/generate-bid-document', {
+          biddingId: currentBiddingId.value,
+          chapterDesign: chapterDesign.value
+        });
+        
+        clearInterval(progressInterval);
+        generateProgress.value = 100;
+        generateStatusText.value = '生成完成！';
+        
+        if (res.data.fileUrl) {
+          fileUrl.value = res.data.fileUrl;
+        }
+        documentGenerated.value = true;
+        currentPage.value = 'preview';
+        ElementPlus.ElMessage.success('投标文件生成完成！');
+        await fetchBiddingList();
+      } catch (e) {
+        clearInterval(progressInterval);
+        generateProgress.value = 0;
+        ElementPlus.ElMessage.error('生成失败: ' + (e.response?.data?.error || e.message));
+      } finally {
+        generateLoading.value = false;
+      }
+    }
+    
+    function downloadDocument() {
+      if (fileUrl.value) {
+        const localUrl = fileUrl.value.replace(/http:\/\/[^\/]+/, apiBase);
+        window.open(localUrl, '_blank');
+      } else {
+        ElementPlus.ElMessage.warning('暂无可下载的文档');
+      }
+    }
+    
+    // 初始化
+    onMounted(() => {
+      const savedUserId = localStorage.getItem('bidding_userId');
+      const savedFp = localStorage.getItem('bidding_fp');
+      if (savedUserId && savedFp) {
+        userId.value = parseInt(savedUserId);
+        loginFingerprint.value = savedFp;
+        isLoggedIn.value = true;
+        fetchBiddingList();
+      }
+    });
+
+    // 文档预览 - 加载Markdown内容
+    async function loadDocumentPreview() {
+      if (!currentBiddingId.value) return;
+      previewLoading.value = true;
+      try {
+        const res = await axios.get(apiBase + '/api/bidding/document-preview/' + currentBiddingId.value);
+        previewContent.value = res.data.content || '';
+        // 设置下载URL
+        if (res.data.fileUrl) {
+          fileUrl.value = res.data.fileUrl;
+        }
+      } catch (e) {
+        console.error('加载文档预览失败:', e);
+        previewContent.value = '';
+      } finally {
+        previewLoading.value = false;
+      }
+    }
+
+    // Markdown 转 HTML 的简易渲染
+    const renderedPreviewHtml = computed(() => {
+      if (!previewContent.value) return '';
+      let html = previewContent.value;
+      // 转义HTML特殊字符
+      html = html.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      // 标题
+      html = html.replace(/^### (.+)$/gm, '<h3>$1</h3>');
+      html = html.replace(/^## (.+)$/gm, '<h2>$1</h2>');
+      html = html.replace(/^# (.+)$/gm, '<h1>$1</h1>');
+      // 粗体和斜体
+      html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+      html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
+      // 表格处理
+      html = html.replace(/^\|(.+)\|$/gm, (match) => {
+        const cells = match.split('|').filter(c => c.trim() !== '');
+        const tds = cells.map(c => `<td>${c.trim()}</td>`).join('');
+        return `<tr>${tds}</tr>`;
+      });
+      html = html.replace(/(<tr>.*<\/tr>\n?)+/g, (match) => {
+        // 移除分隔行 (---|----|---)
+        const rows = match.split('\n').filter(r => r.trim() && !r.match(/^<tr>(<td>[\s\-:]+<\/td>)+<\/tr>$/));
+        if (rows.length === 0) return '';
+        const header = rows[0];
+        const body = rows.slice(1).join('\n');
+        return `<table class="doc-table"><thead>${header}</thead><tbody>${body}</tbody></table>`;
+      });
+      // 无序列表
+      html = html.replace(/^[\-\*] (.+)$/gm, '<li>$1</li>');
+      html = html.replace(/(<li>.*<\/li>\n?)+/g, '<ul>$&</ul>');
+      // 有序列表
+      html = html.replace(/^\d+\. (.+)$/gm, '<li>$1</li>');
+      // 段落（连续非空行）
+      html = html.replace(/^(?!<[hultd]|<\/|<li|<strong|<em)(.+)$/gm, '<p>$1</p>');
+      // 清理多余空行
+      html = html.replace(/\n{3,}/g, '\n\n');
+      return html;
+    });
+
+    watch(currentPage, (page) => {
+      if (page === 'preview' && documentGenerated.value) {
+        loadDocumentPreview();
+      }
+    });
+
+    return {
+      apiBase, isLoggedIn, userId, loginFingerprint, loginLoading,
+      currentPage, currentBiddingId, currentFileName, stats,
+      biddingList, recentProjects, analysisData, directoryStructure,
+      preAnalysisLoading, chapterAnalysisLoading, chapterDesignLoading,
+      chapterDesign, expandedChapters, generateLoading, generateProgress,
+      generateStatusText, documentGenerated, previewContent, previewLoading,
+      fileUrl, renderedPreviewHtml,
+      isDragging, uploadProgress, menuItems, workflowSteps, currentStep,
+      analysisStep, statusType, formatDate, toggleChapter, handleLogin,
+      logout, fetchBiddingList, selectProject, analyzeProject, viewProject, goToStep,
+      handleFileSelect, handleDrop, uploadFile, runPreAnalysis,
+      runChapterAnalysis, runChapterDesign, runGenerate, downloadDocument,
+      loadDocumentPreview, splitLines
+    };
+  }
+});
+
+for (const [key, component] of Object.entries(ElementPlusIconsVue)) {
+  app.component(key, component);
+}
+app.use(ElementPlus);
+app.mount('#app');
+</script>
+</body>
+</html>
