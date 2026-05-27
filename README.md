@@ -139,6 +139,12 @@ DEEPSEEK_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1
 DEEPSEEK_CHAT_MODEL=qwen-plus
 ```
 
+## 致谢
+
+感谢 [wbcxxx6](https://github.com/wbcxxx6) 对本项目的初始版本做出的贡献。
+
+---
+
 ## 许可证
 
 MIT License
