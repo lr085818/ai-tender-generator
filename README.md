@@ -83,26 +83,28 @@
 
 ## 快速开始
 
-### 1. 安装依赖
+### 1. 克隆并安装依赖
 
 ```bash
+git clone https://github.com/lr085818/ai-tender-generator.git
+cd ai-tender-generator
 pip install flask flask-cors python-docx mammoth PyPDF2 python-dotenv requests
 ```
 
-### 2. 配置环境变量
+### 2. 配置 API Key
 
-编辑 `.env` 文件：
-
-```ini
-DEEPSEEK_API_KEY=your_deepseek_api_key
-DEEPSEEK_BASE_URL=https://api.deepseek.com
-DEEPSEEK_CHAT_MODEL=deepseek-v4-flash
-
-ONLYOFFICE_JWT_SECRET=your_secret
-APP_HOST=localhost:3012
+```bash
+# 复制环境变量模板
+cp .env.example .env
 ```
 
-> 获取 API Key：[DeepSeek Platform](https://platform.deepseek.com)
+编辑 `.env` 文件，填入你的 DeepSeek API Key：
+
+```ini
+DEEPSEEK_API_KEY=sk-你的真实key
+```
+
+> 获取 API Key：[DeepSeek Platform](https://platform.deepseek.com)（注册免费，送额度）
 
 ### 3. 启动服务
 
